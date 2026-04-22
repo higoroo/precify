@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5f4f0">
 <title>Precify</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -220,6 +221,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <div class="tb-sep"></div>
   <div class="tb-sub" id="tb-sub"></div>
   <div class="tb-right">
+    <div id="sync-status" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);cursor:pointer" onclick="goTab('config')" title="Configurar Supabase">
+      <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0"></div>
+      <span id="sync-label">local</span>
+    </div>
     <span class="badge b-nok" id="tb-urg" style="display:none;cursor:pointer" onclick="filterAndGo('urgente')"></span>
   </div>
 </div>
@@ -260,6 +265,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <button class="ni" data-tab="hist" onclick="goTab('hist')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Histórico
+  </button>
+  <button class="ni" data-tab="config" onclick="goTab('config')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Configurações
   </button>
 </nav>
 
@@ -383,6 +392,45 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <div class="card" id="ins-criticos" style="display:none"></div>
 </div>
 
+<!-- CONFIG -->
+<div id="p-config" style="display:none">
+  <div class="ph"><div><div class="ph-title">Configurações</div><div class="ph-sub">Conecte ao Supabase para sincronizar entre dispositivos</div></div></div>
+  <div class="card">
+    <div class="card-title">Conexão Supabase</div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:14px">
+      Sem Supabase, os dados ficam salvos <strong>só neste navegador</strong>. Conectando, você acessa de qualquer dispositivo e os dados ficam na nuvem.<br>
+      <span style="color:var(--t3);font-size:12px">Seus dados atuais do localStorage <strong>não serão perdidos</strong> — eles serão enviados ao Supabase na primeira conexão.</span>
+    </div>
+    <div class="field"><label>URL do projeto Supabase</label><input id="cfg-url" type="url" placeholder="https://xxxx.supabase.co"></div>
+    <div class="field"><label>Chave anon (public)</label><input id="cfg-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIs..."></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-p" onclick="salvarConfig()" style="flex:1">Salvar e conectar</button>
+      <button class="btn" onclick="testarConexao()">Testar conexão</button>
+    </div>
+    <div id="cfg-status" style="font-size:13px;padding:8px;border-radius:var(--rs);display:none"></div>
+  </div>
+  <div class="card" id="cfg-sync-card" style="display:none">
+    <div class="card-title">Sincronização</div>
+    <div id="cfg-sync-info" style="font-size:13px;color:var(--t2);margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="syncDown()">↓ Baixar do Supabase</button>
+      <button class="btn" onclick="syncUp()">↑ Enviar local para Supabase</button>
+      <button class="btn btn-d" onclick="desconectar()">Desconectar</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Como criar o banco de dados</div>
+    <ol style="font-size:13px;color:var(--t2);line-height:2;padding-left:18px">
+      <li>Acesse <strong>supabase.com</strong> → criar conta gratuita</li>
+      <li>Clique em <strong>New project</strong> → dê um nome → aguarde (~2 min)</li>
+      <li>No menu: <strong>SQL Editor → New query</strong></li>
+      <li>Cole o conteúdo do arquivo <code style="background:var(--sur2);padding:1px 5px;border-radius:4px">supabase_schema.sql</code> → clique em <strong>Run</strong></li>
+      <li>Vá em <strong>Settings → API</strong> e copie a <strong>Project URL</strong> e a chave <strong>anon public</strong></li>
+      <li>Cole os valores nos campos acima e clique em <strong>Salvar e conectar</strong></li>
+    </ol>
+  </div>
+</div>
+
 <!-- HISTÓRICO -->
 <div id="p-hist" style="display:none">
   <div class="ph"><div><div class="ph-title">Histórico</div><div class="ph-sub" id="hist-sub"></div></div></div>
@@ -412,6 +460,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <button class="nb" data-tab="hist" onclick="goTab('hist')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Histórico
+  </button>
+  <button class="nb" data-tab="config" onclick="goTab('config')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Config
   </button>
 </div>
 </div>
@@ -610,8 +662,20 @@ function calc(a){
 function fmt(v){return'R$\u00a0'+(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function calcSug(a){
   const alvo=20,com=(+a.com||11.5)/100,ant=(+a.ant||4.2)/100,imp=(+a.imp||10)/100;
-  const pv=(+a.custo+(+a.frete||0)-(+a.ajml||0)+(+a.descMax||10))/((1-com-ant-imp)-(alvo/100));
-  return pv>0&&isFinite(pv)?{pv:Math.ceil(pv*10)/10,margem:alvo}:null
+  const custo=+a.custo||0,frete=+a.frete||0,ajml=+a.ajml||0;
+  const descMax=+a.descMax||10,descPct=(+a.descPct||5)/100;
+  const t=1-com-ant-imp,denom=t-alvo/100;
+  if(denom<=0.01)return null;
+  const pCap=(custo+frete-ajml+descMax)/denom;
+  const denomPct=t-descPct-alvo/100;
+  const pPct=denomPct>0.01?(custo+frete-ajml)/denomPct:null;
+  const threshold=descPct>0?descMax/descPct:9999;
+  const pv=pCap>=threshold?pCap:(pPct&&pPct>0?pPct:pCap);
+  if(!isFinite(pv)||pv<=0||pv>50000)return null;
+  // Only suggest if it's higher than current price (makes sense to raise)
+  const pvEff=(+a.precoD>0)?(+a.precoD):(+a.preco||0);
+  if(pv<=pvEff)return null;
+  return{pv:Math.ceil(pv*10)/10,margem:alvo}
 }
 function mkTags(tags){
   if(!tags)return'';
@@ -623,15 +687,184 @@ function mkTags(tags){
 }
 
 // ── NAVIGATION ──
+
+// ── SUPABASE ──
+const CFG_KEY='pfy_cfg';
+let SB=null,SB_USER=null;
+
+function getCfg(){try{return JSON.parse(localStorage.getItem(CFG_KEY)||'{}')}catch(e){return{}}}
+function saveCfg(c){localStorage.setItem(CFG_KEY,JSON.stringify(c))}
+
+function setSyncStatus(state){
+  const dot=document.getElementById('sync-dot');
+  const lbl=document.getElementById('sync-label');
+  if(!dot||!lbl)return;
+  const map={local:{c:'var(--am)',t:'local'},connecting:{c:'var(--am)',t:'conectando...'},connected:{c:'var(--gr)',t:'sincronizado'},error:{c:'var(--rd)',t:'erro'},syncing:{c:'var(--bl)',t:'sincronizando...'}};
+  const s=map[state]||map.local;
+  dot.style.background=s.c;lbl.textContent=s.t;
+}
+
+async function initSupabase(){
+  const cfg=getCfg();
+  if(!cfg.url||!cfg.key){setSyncStatus('local');return}
+  try{
+    setSyncStatus('connecting');
+    SB=window.supabase.createClient(cfg.url,cfg.key);
+    const {data:{user},error}=await SB.auth.getUser();
+    if(error||!user){
+      // Try anonymous sign-in
+      const {data,error:e2}=await SB.auth.signInAnonymously();
+      if(e2){setSyncStatus('error');SB=null;return}
+      SB_USER=data.user;
+    } else {
+      SB_USER=user;
+    }
+    setSyncStatus('connected');
+    updateCfgCard();
+    await syncDown();
+  }catch(e){setSyncStatus('error');SB=null}
+}
+
+function updateCfgCard(){
+  const card=document.getElementById('cfg-sync-card');
+  const info=document.getElementById('cfg-sync-info');
+  if(!card||!info)return;
+  if(SB&&SB_USER){
+    card.style.display='';
+    info.textContent='Conectado. ID do usuário: '+SB_USER.id.slice(0,8)+'...';
+  } else {
+    card.style.display='none';
+  }
+}
+
+async function salvarConfig(){
+  const url=(document.getElementById('cfg-url')?.value||'').trim();
+  const key=(document.getElementById('cfg-key')?.value||'').trim();
+  if(!url||!key){showCfgStatus('Preencha URL e chave','error');return}
+  saveCfg({url,key});
+  showCfgStatus('Salvando...','info');
+  SB=null;SB_USER=null;
+  await initSupabase();
+  if(SB){showCfgStatus('Conectado com sucesso!','ok')}
+  else{showCfgStatus('Erro ao conectar. Verifique URL e chave.','error')}
+}
+
+async function testarConexao(){
+  const url=(document.getElementById('cfg-url')?.value||'').trim();
+  const key=(document.getElementById('cfg-key')?.value||'').trim();
+  if(!url||!key){showCfgStatus('Preencha URL e chave primeiro','error');return}
+  showCfgStatus('Testando...','info');
+  try{
+    const tb=window.supabase.createClient(url,key);
+    const {error}=await tb.from('anuncios').select('id').limit(1);
+    if(error&&error.code==='42P01'){showCfgStatus('Conectou! Mas a tabela ainda não existe. Execute o supabase_schema.sql.','warn')}
+    else if(error){showCfgStatus('Erro: '+error.message,'error')}
+    else{showCfgStatus('Conexão OK! Tabelas encontradas.','ok')}
+  }catch(e){showCfgStatus('Erro: '+e.message,'error')}
+}
+
+function showCfgStatus(msg,type){
+  const el=document.getElementById('cfg-status');if(!el)return;
+  const colors={ok:'color:var(--gr);background:var(--gr-bg)',error:'color:var(--rd);background:var(--rd-bg)',warn:'color:var(--am);background:var(--am-bg)',info:'color:var(--bl);background:var(--bl-bg)'};
+  el.style.cssText=(colors[type]||colors.info)+';display:block;padding:8px 12px;border-radius:var(--rs)';
+  el.textContent=msg;
+}
+
+async function syncDown(){
+  if(!SB||!SB_USER)return;
+  setSyncStatus('syncing');
+  try{
+    const {data:an,error:e1}=await SB.from('anuncios').select('*').eq('user_id',SB_USER.id).order('created_at');
+    const {data:hi,error:e2}=await SB.from('historico').select('*').eq('user_id',SB_USER.id).order('created_at',{ascending:false}).limit(200);
+    if(e1||e2){setSyncStatus('error');return}
+    if(an&&an.length>0){
+      DATA=an.map(a=>({
+        id:a.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
+        preco:+a.preco||0,precoD:+a.preco_d||0,custo:+a.custo||0,
+        com:+a.com||11.5,ant:+a.ant||4.2,frete:+a.frete||0,ajml:+a.aj_ml||0,
+        descPct:+a.desc_pct||5,descMax:+a.desc_max||10,imp:+a.imp||10,
+        obs:a.obs||'',tags:{full:!!a.tag_full,oferta:!!a.tag_oferta,pub:!!a.tag_pub}
+      }));
+      NID=999999;// use UUIDs from supabase
+      sv();
+    } else {
+      // First time: push local data to Supabase
+      await syncUp(true);
+      return;
+    }
+    if(hi)HIST=hi.map(h=>({ts:new Date(h.created_at).toLocaleString('pt-BR'),msg:h.msg}));
+    setSyncStatus('connected');
+    renderDash();
+    if(document.getElementById('p-anuncios')?.style.display!=='none')renderAnuncios();
+  }catch(e){setSyncStatus('error')}
+}
+
+async function syncUp(silent=false){
+  if(!SB||!SB_USER)return;
+  if(!silent)setSyncStatus('syncing');
+  try{
+    // Delete all and re-insert (simple strategy for small dataset)
+    await SB.from('anuncios').delete().eq('user_id',SB_USER.id);
+    const rows=DATA.map(a=>({
+      user_id:SB_USER.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
+      preco:a.preco||0,preco_d:a.precoD||0,custo:a.custo||0,
+      com:a.com||11.5,ant:a.ant||4.2,frete:a.frete||0,aj_ml:a.ajml||0,
+      desc_pct:a.descPct||5,desc_max:a.descMax||10,imp:a.imp||10,
+      obs:a.obs||'',tag_full:!!(a.tags?.full),tag_oferta:!!(a.tags?.oferta),tag_pub:!!(a.tags?.pub)
+    }));
+    if(rows.length>0)await SB.from('anuncios').insert(rows);
+    if(!silent){setSyncStatus('connected');showCfgStatus('Dados enviados com sucesso!','ok')}
+    else setSyncStatus('connected');
+  }catch(e){setSyncStatus('error')}
+}
+
+async function desconectar(){
+  if(!confirm('Desconectar do Supabase? Os dados continuarão salvos localmente.'))return;
+  SB=null;SB_USER=null;
+  saveCfg({});
+  setSyncStatus('local');
+  updateCfgCard();
+  showCfgStatus('Desconectado. Dados mantidos localmente.','info');
+}
+
+// Override sv() to also sync after save
+const sv_orig=sv;
+function sv(){
+  sv_orig();
+  if(SB&&SB_USER)setTimeout(()=>syncUp(true),300);
+}
+
+// Override addH to also save hist to Supabase
+const addH_orig=addH;
+function addH(msg){
+  addH_orig(msg);
+  if(SB&&SB_USER){
+    SB.from('historico').insert({user_id:SB_USER.id,msg}).catch(()=>{});
+  }
+}
+
+// Load config into form fields when config tab opens
+function loadCfgFields(){
+  const cfg=getCfg();
+  const urlEl=document.getElementById('cfg-url');
+  const keyEl=document.getElementById('cfg-key');
+  if(urlEl&&cfg.url)urlEl.value=cfg.url;
+  if(keyEl&&cfg.key)keyEl.value=cfg.key;
+  updateCfgCard();
+}
+
+// Extend goTab to include config
+
 function goTab(t){
   document.querySelectorAll('[data-tab]').forEach(el=>el.classList.toggle('active',el.dataset.tab===t))
-  ;['dash','anuncios','sim','insights','hist'].forEach(p=>{
+  ;['dash','anuncios','sim','insights','hist','config'].forEach(p=>{
     document.getElementById('p-'+p).style.display=p===t?'':'none'
   })
   if(t==='dash')renderDash()
   else if(t==='anuncios'){if(!activeFilter)populateFiltro();renderAnuncios()}
   else if(t==='insights')renderInsights()
   else if(t==='hist')renderHist()
+  else if(t==='config')loadCfgFields()
   document.querySelector('.content').scrollTop=0
 }
 
@@ -942,8 +1175,19 @@ function syncP(from){
 }
 
 function sugs(custo,frete,ajml,descPct,descMax,ant,imp,com,alvo){
-  function p4m(m){const t=1-com/100-ant/100-imp/100;const p=(custo+frete-ajml+descMax)/(t-m/100);return p>0?Math.ceil(p*10)/10:null}
-  return[{l:'Conservador',m:Math.max(alvo-5,8)},{l:'Recomendado',m:alvo},{l:'Otimista',m:alvo+5}].map(s=>({...s,pv:p4m(s.m)})).filter(s=>s.pv>0)
+  function p4m(m){
+    const t=1-com/100-ant/100-imp/100;
+    const denom=t-m/100;
+    if(denom<=0.01)return null;
+    // Use descMax if pv will be large enough, else use descPct
+    const pCap=(custo+frete-ajml+descMax)/denom;
+    const pPct=(custo+frete-ajml)/((t-descPct/100)-m/100);
+    const threshold=descMax/(descPct/100);
+    const p=pCap>=threshold?pCap:(pPct>0?pPct:pCap);
+    if(!isFinite(p)||p<=0||p>50000)return null;
+    return Math.ceil(p*10)/10;
+  }
+  return[{l:'Conservador',m:Math.max(alvo-5,8)},{l:'Recomendado',m:alvo},{l:'Otimista',m:alvo+5}].map(s=>({...s,pv:p4m(s.m)})).filter(s=>s.pv>0&&s.pv<50000)
 }
 
 function simCalc(){
@@ -1078,7 +1322,7 @@ function renderHist(){
     :'<div class="empty">Nenhuma alteração ainda.</div>'
 }
 
-load();renderDash()
+load();initSupabase().then(()=>renderDash())
 </script>
 </body>
 </html>
