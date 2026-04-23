@@ -6,6 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f5f4f0">
 <title>Precify</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -193,6 +194,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 /* Util */
 .empty{text-align:center;padding:36px 14px;color:var(--t3);font-size:13px}
 .sug-link{color:var(--bl);cursor:pointer;text-decoration:underline;font-weight:500;font-size:12px}
+.tbl-inp{border:1px solid var(--bd);border-radius:4px;padding:2px 5px;font-size:12px;font-family:var(--mono);background:var(--sur);color:var(--t);height:28px}
+.tbl-inp:focus{outline:1.5px solid var(--bl);border-color:var(--bl)}
+.tbl-inp:hover{border-color:var(--bd2)}
 /* Responsive */
 @media(max-width:860px){
   .sidebar{display:none}
@@ -220,6 +224,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <div class="tb-sep"></div>
   <div class="tb-sub" id="tb-sub"></div>
   <div class="tb-right">
+    <div id="sync-status" style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);cursor:pointer" onclick="goTab('config')" title="Configurar Supabase">
+      <div id="sync-dot" style="width:7px;height:7px;border-radius:50%;background:var(--t3);flex-shrink:0"></div>
+      <span id="sync-label">local</span>
+    </div>
     <span class="badge b-nok" id="tb-urg" style="display:none;cursor:pointer" onclick="filterAndGo('urgente')"></span>
   </div>
 </div>
@@ -253,6 +261,11 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
     Publicidade
   </button>
   <div class="sb-sep"></div>
+  <button class="ni" data-tab="shopee" onclick="goTab('shopee')" style="color:var(--pu)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    Shopee
+  </button>
+  <div class="sb-sep"></div>
   <button class="ni" data-tab="insights" onclick="goTab('insights')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     Insights
@@ -260,6 +273,14 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <button class="ni" data-tab="hist" onclick="goTab('hist')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Histórico
+  </button>
+  <button class="ni" data-tab="custos" onclick="goTab('custos')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    Catálogo de custos
+  </button>
+  <button class="ni" data-tab="config" onclick="goTab('config')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Configurações
   </button>
 </nav>
 
@@ -383,6 +404,95 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <div class="card" id="ins-criticos" style="display:none"></div>
 </div>
 
+<!-- CONFIG -->
+<div id="p-config" style="display:none">
+  <div class="ph"><div><div class="ph-title">Configurações</div><div class="ph-sub">Conecte ao Supabase para sincronizar entre dispositivos</div></div></div>
+  <div class="card">
+    <div class="card-title">Conexão Supabase</div>
+    <div style="font-size:13px;color:var(--t2);line-height:1.7;margin-bottom:14px">
+      Sem Supabase, os dados ficam salvos <strong>só neste navegador</strong>. Conectando, você acessa de qualquer dispositivo e os dados ficam na nuvem.<br>
+      <span style="color:var(--t3);font-size:12px">Seus dados atuais do localStorage <strong>não serão perdidos</strong> — eles serão enviados ao Supabase na primeira conexão.</span>
+    </div>
+    <div class="field"><label>URL do projeto Supabase</label><input id="cfg-url" type="url" placeholder="https://xxxx.supabase.co"></div>
+    <div class="field"><label>Chave anon (public)</label><input id="cfg-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIs..."></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-p" onclick="salvarConfig()" style="flex:1">Salvar e conectar</button>
+      <button class="btn" onclick="testarConexao()">Testar conexão</button>
+    </div>
+    <div id="cfg-status" style="font-size:13px;padding:8px;border-radius:var(--rs);display:none"></div>
+  </div>
+  <div class="card" id="cfg-sync-card" style="display:none">
+    <div class="card-title">Sincronização</div>
+    <div id="cfg-sync-info" style="font-size:13px;color:var(--t2);margin-bottom:12px"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="syncDown()">↓ Baixar do Supabase</button>
+      <button class="btn" onclick="syncUp()">↑ Enviar local para Supabase</button>
+      <button class="btn btn-d" onclick="desconectar()">Desconectar</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Como criar o banco de dados</div>
+    <ol style="font-size:13px;color:var(--t2);line-height:2;padding-left:18px">
+      <li>Acesse <strong>supabase.com</strong> → criar conta gratuita</li>
+      <li>Clique em <strong>New project</strong> → dê um nome → aguarde (~2 min)</li>
+      <li>No menu: <strong>SQL Editor → New query</strong></li>
+      <li>Cole o conteúdo do arquivo <code style="background:var(--sur2);padding:1px 5px;border-radius:4px">supabase_schema.sql</code> → clique em <strong>Run</strong></li>
+      <li>Vá em <strong>Settings → API</strong> e copie a <strong>Project URL</strong> e a chave <strong>anon public</strong></li>
+      <li>Cole os valores nos campos acima e clique em <strong>Salvar e conectar</strong></li>
+    </ol>
+    <div style="margin-top:12px;background:var(--am-bg);border:1px solid var(--am-bd);border-radius:var(--rs);padding:10px 12px;font-size:13px;color:var(--am)">
+      <strong>Nota:</strong> As chaves ficam salvas no seu navegador (localStorage), não no código do GitHub. Cada dispositivo precisa configurar uma vez.
+    </div>
+    <ol style="display:none">
+    </ol>
+  </div>
+</div>
+
+
+<!-- SHOPEE -->
+<div id="p-shopee" style="display:none">
+  <div class="ph">
+    <div><div class="ph-title" style="color:var(--pu)">Shopee</div><div class="ph-sub" id="sh-sub"></div></div>
+    <div class="ph-actions">
+      <button class="btn" onclick="goTab('sim')">Simular</button>
+      <button class="btn btn-p" style="background:var(--pu);border-color:var(--pu)" onclick="openShopeeModal()">+ Novo</button>
+    </div>
+  </div>
+  <div id="sh-alerts"></div>
+  <div class="metrics" id="sh-metrics"></div>
+  <div class="two-col">
+    <div class="card"><div class="card-title">Melhores margens</div><div id="sh-top"></div></div>
+    <div class="card"><div class="card-title">Piores margens</div><div id="sh-bot"></div></div>
+  </div>
+  <!-- Table -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <input id="sh-busca" class="fbar" style="flex:1;min-width:150px;margin:0;height:34px;border:1px solid var(--bd2);border-radius:var(--rs);padding:0 10px;font-size:13px;font-family:var(--font);background:var(--sur);color:var(--t)" placeholder="Buscar...">
+      <select id="sh-fstatus" onchange="renderShopee()" style="height:34px;border:1px solid var(--bd2);border-radius:var(--rs);padding:0 8px;font-size:12px;font-family:var(--font);background:var(--sur);color:var(--t)">
+        <option value="">Todos</option><option value="ok">Saudáveis</option><option value="nok">Não saudáveis</option>
+      </select>
+    </div>
+    <div class="tbl-wrap">
+      <table class="tbl"><thead><tr>
+        <th>Código</th><th>Produto</th><th>Status</th><th>Preço s/desc</th><th>Preço c/desc</th><th>Custo</th><th>Taxa Shopee</th><th>Frete</th><th>Desconto</th><th>Lucro</th><th>Margem</th><th>Obs</th><th></th>
+      </tr></thead><tbody id="sh-tbl-body"></tbody></table>
+    </div>
+    <div class="mob" id="sh-mob-cards" style="display:none;padding:10px"></div>
+  </div>
+</div>
+
+
+<!-- CATÁLOGO DE CUSTOS -->
+<div id="p-custos" style="display:none">
+  <div class="ph">
+    <div><div class="ph-title">Catálogo de custos</div><div class="ph-sub">Custo padrão por produto — preenchido automaticamente ao cadastrar anúncios</div></div>
+    <button class="btn btn-p" onclick="addCusto()">+ Adicionar</button>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="tbl"><thead><tr><th>Produto</th><th>Custo (R$)</th><th></th></tr></thead>
+    <tbody id="custos-body"></tbody></table>
+  </div>
+</div>
 <!-- HISTÓRICO -->
 <div id="p-hist" style="display:none">
   <div class="ph"><div><div class="ph-title">Histórico</div><div class="ph-sub" id="hist-sub"></div></div></div>
@@ -405,6 +515,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
     Simular
   </button>
+  <button class="nb" data-tab="shopee" onclick="goTab('shopee')" style="position:relative">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+    Shopee
+  </button>
   <button class="nb" data-tab="insights" onclick="goTab('insights')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     Insights
@@ -412,6 +526,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
   <button class="nb" data-tab="hist" onclick="goTab('hist')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
     Histórico
+  </button>
+  <button class="nb" data-tab="config" onclick="goTab('config')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Config
   </button>
 </div>
 </div>
@@ -433,8 +551,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
     <div><div class="rbox-label">Lucro líquido</div><div class="rbox-val" id="rb-luc">—</div></div>
     <div><div class="rbox-label">Margem</div><div class="rbox-val" id="rb-mar">—</div></div>
   </div>
+  <div id="m-sug" style="display:none;font-size:13px;color:var(--am);background:var(--am-bg);border:1px solid var(--am-bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:12px"></div>
   <div class="fg2">
-    <div class="field"><label>Nome do produto</label><input id="f-nome" placeholder="Ex: Coluna Áustria" oninput="calcLive()"></div>
+    <div class="field"><label>Nome do produto</label><input id="f-nome" placeholder="Ex: Coluna Áustria" oninput="autoFillCusto();calcLive()"></div>
     <div class="field"><label>Código MLB</label><input id="f-cod" placeholder="MLB..." inputmode="numeric"></div>
   </div>
   <div class="fsep">Preços e custo</div>
@@ -472,6 +591,48 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 </div>
 
 <script>
+
+// ── CATÁLOGO DE CUSTOS ──
+const CUSTOS={
+  "LUMINÁRIA VIENA":112.09,"COLUNA VIENA":112.09,"LUMINÁRIA FLORIPA":117.02,"COLUNA FLORIPA":117.02,
+  "ABAJUR WELLS":52.86,"ABJ WELLS":52.86,"COLUNA WELLS":108.33,
+  "ABAJUR MINE":37.29,"ABJ MINE":37.29,
+  "ABAJUR SKY":106.41,"ABJ SKY":106.41,
+  "ABAJUR WOOD":106.41,"ABJ WOOD":106.41,
+  "KIT ÁUSTRIA ABAJUR + LUMINÁRIA":186.05,"KIT ÁUSTRIA ABJ E COL":186.05,
+  "KIT 2 ABJ ÁUSTRIA":128.30,"KIT 2 AUSTRIA":128.30,"KIT 2 ABJ AUSTRIA":128.30,
+  "KIT 2 MINE":74.58,"KIT MINE":74.58,
+  "CÚPULA 40 S/ ARO":32,"CÚPULA 40CM S/ ARO":32,"CÚPULA 40 C/ ARO":32,"CÚPULA 40CM C/ ARO":32,
+  "KIT 2 SLIM":86.50,"KIT SLIM":86.50,
+  "LUMINÁRIA MÔNACO":105.87,"COLUNA MÔNACO":105.87,
+  "KIT 2 MÔNACO":211.74,"KIT 2 MONÂCO":211.74,
+  "CÚPULA MÔNACO":30,"CÚPULA MONÂCO":30,
+  "LUMINÁRIA RIPADA":133.21,"COLUNA RIPADA":133.21,
+  "PENDENTE CÚPULA CILINDRICA":49,"PENDENTE CÚPULA CONE":48,"PENDENTE CONE SISAL":52.50,
+  "VASO ROMA 80CM":340,"BACIA M FIBRA DE VIDRO":220,"VASO VIETNAMITA 60CM DE DM":350,"VASO XINA 65":219,
+  "SUPORTE PORTA GUARDANAPO":6,"ADEGA MINIMALISTA":15,
+  "PRATELEIRA INVISÍVEL":10,"KIT 2 PRATELEIRAS INVISÍVEL":20,"KIT 3 PRATELEIRAS INVISÍVEL":20,
+  "ABAJUR SOFT":7,"ABJ SOFT":7,
+  "ADEGA QUEBRA CABEÇA":0,"ADEGA QUEBRA-CABEÇA":0,
+  "SUPORTE DE TAÇAS":0,"SUPORTE DE TAÇA":0,
+  "SUPORTE PAPEL TOALHA":5,
+  "TAMPO 35CM":10,"KIT 2 TAMPO 35CM":25,
+  "ABJ ÁUSTRIA":64.15,"ABJ AUSTRIA":64.15,"ABJ AUSTRIA PRETO":64.15,"ABJ ÁUSTRIA PRETO":64.15,
+  "COLUNA ÁUSTRIA":121.90,"COLUNA AUSTRIA":121.90,
+  "COLUNA IPANEMA":106.78,"ABJ IPANEMA":106.78,"LUMINÁRIA IPANEMA":106.78,
+  "KIT ÁUSTRIA":128.38,"KIT AUSTRIA":128.38
+};
+function getCusto(nome){
+  if(!nome)return null;
+  const u=nome.toUpperCase().trim();
+  if(CUSTOS[u]!==undefined)return CUSTOS[u];
+  // Partial match
+  for(const k of Object.keys(CUSTOS)){
+    if(u.includes(k))return CUSTOS[k];
+  }
+  return null;
+}
+
 const SK='pfy1',HK='pfy1h';
 const SEED=[
 {cod:'4585262697',nome:'Coluna Áustria',preco:500,precoD:392.10,custo:121.90,com:11.5,ant:4.2,frete:105.95,ajml:0,descPct:5,descMax:10,imp:10,tags:{full:false,oferta:false,pub:false},obs:''},
@@ -578,6 +739,15 @@ const SEED=[
 {cod:'4508238534',nome:'ABJ Áustria Preto',preco:300,precoD:267.40,custo:64.15,com:11.5,ant:4.2,frete:68.65,ajml:0,descPct:5,descMax:10,imp:10,tags:{full:false,oferta:false,pub:false},obs:'oportunidade'},
 ];
 
+// ── AUTO-FILL ──
+function autoFillCusto(){
+  const nome=document.getElementById('f-nome')?.value||'';
+  const custoEl=document.getElementById('f-custo');
+  if(!custoEl||+custoEl.value>0)return; // don't overwrite
+  const c=getCusto(nome);
+  if(c!==null){custoEl.value=c;calcLive();}
+}
+
 // ── STATE ──
 let DATA=[],HIST=[],NID=1000,editId=null,activeFilter=null,mTipo='classico',sTipo='classico';
 
@@ -610,8 +780,20 @@ function calc(a){
 function fmt(v){return'R$\u00a0'+(+v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function calcSug(a){
   const alvo=20,com=(+a.com||11.5)/100,ant=(+a.ant||4.2)/100,imp=(+a.imp||10)/100;
-  const pv=(+a.custo+(+a.frete||0)-(+a.ajml||0)+(+a.descMax||10))/((1-com-ant-imp)-(alvo/100));
-  return pv>0&&isFinite(pv)?{pv:Math.ceil(pv*10)/10,margem:alvo}:null
+  const custo=+a.custo||0,frete=+a.frete||0,ajml=+a.ajml||0;
+  const descMax=+a.descMax||10,descPct=(+a.descPct||5)/100;
+  const t=1-com-ant-imp,denom=t-alvo/100;
+  if(denom<=0.01)return null;
+  const pCap=(custo+frete-ajml+descMax)/denom;
+  const denomPct=t-descPct-alvo/100;
+  const pPct=denomPct>0.01?(custo+frete-ajml)/denomPct:null;
+  const threshold=descPct>0?descMax/descPct:9999;
+  const pv=pCap>=threshold?pCap:(pPct&&pPct>0?pPct:pCap);
+  if(!isFinite(pv)||pv<=0||pv>50000)return null;
+  // Only suggest if it's higher than current price (makes sense to raise)
+  const pvEff=(+a.precoD>0)?(+a.precoD):(+a.preco||0);
+  if(pv<=pvEff)return null;
+  return{pv:Math.ceil(pv*10)/10,margem:alvo}
 }
 function mkTags(tags){
   if(!tags)return'';
@@ -623,15 +805,186 @@ function mkTags(tags){
 }
 
 // ── NAVIGATION ──
+
+// ── SUPABASE ──
+const CFG_KEY='pfy_cfg';
+let SB=null,SB_USER=null;
+
+function getCfg(){try{return JSON.parse(localStorage.getItem(CFG_KEY)||'{}')}catch(e){return{}}}
+function saveCfg(c){localStorage.setItem(CFG_KEY,JSON.stringify(c))}
+
+function setSyncStatus(state){
+  const dot=document.getElementById('sync-dot');
+  const lbl=document.getElementById('sync-label');
+  if(!dot||!lbl)return;
+  const map={local:{c:'var(--am)',t:'local'},connecting:{c:'var(--am)',t:'conectando...'},connected:{c:'var(--gr)',t:'sincronizado'},error:{c:'var(--rd)',t:'erro'},syncing:{c:'var(--bl)',t:'sincronizando...'}};
+  const s=map[state]||map.local;
+  dot.style.background=s.c;lbl.textContent=s.t;
+}
+
+async function initSupabase(){
+  const cfg=getCfg();
+  if(!cfg.url||!cfg.key){setSyncStatus('local');return}
+  try{
+    setSyncStatus('connecting');
+    SB=window.supabase.createClient(cfg.url,cfg.key);
+    const {data:{user},error}=await SB.auth.getUser();
+    if(error||!user){
+      // Try anonymous sign-in
+      const {data,error:e2}=await SB.auth.signInAnonymously();
+      if(e2){setSyncStatus('error');SB=null;return}
+      SB_USER=data.user;
+    } else {
+      SB_USER=user;
+    }
+    setSyncStatus('connected');
+    updateCfgCard();
+    await syncDown();
+  }catch(e){setSyncStatus('error');SB=null}
+}
+
+function updateCfgCard(){
+  const card=document.getElementById('cfg-sync-card');
+  const info=document.getElementById('cfg-sync-info');
+  if(!card||!info)return;
+  if(SB&&SB_USER){
+    card.style.display='';
+    info.textContent='Conectado. ID do usuário: '+SB_USER.id.slice(0,8)+'...';
+  } else {
+    card.style.display='none';
+  }
+}
+
+async function salvarConfig(){
+  const url=(document.getElementById('cfg-url')?.value||'').trim();
+  const key=(document.getElementById('cfg-key')?.value||'').trim();
+  if(!url||!key){showCfgStatus('Preencha URL e chave','error');return}
+  saveCfg({url,key});
+  showCfgStatus('Salvando...','info');
+  SB=null;SB_USER=null;
+  await initSupabase();
+  if(SB){showCfgStatus('Conectado com sucesso!','ok')}
+  else{showCfgStatus('Erro ao conectar. Verifique URL e chave.','error')}
+}
+
+async function testarConexao(){
+  const url=(document.getElementById('cfg-url')?.value||'').trim();
+  const key=(document.getElementById('cfg-key')?.value||'').trim();
+  if(!url||!key){showCfgStatus('Preencha URL e chave primeiro','error');return}
+  showCfgStatus('Testando...','info');
+  try{
+    const tb=window.supabase.createClient(url,key);
+    const {error}=await tb.from('anuncios').select('id').limit(1);
+    if(error&&error.code==='42P01'){showCfgStatus('Conectou! Mas a tabela ainda não existe. Execute o supabase_schema.sql.','warn')}
+    else if(error){showCfgStatus('Erro: '+error.message,'error')}
+    else{showCfgStatus('Conexão OK! Tabelas encontradas.','ok')}
+  }catch(e){showCfgStatus('Erro: '+e.message,'error')}
+}
+
+function showCfgStatus(msg,type){
+  const el=document.getElementById('cfg-status');if(!el)return;
+  const colors={ok:'color:var(--gr);background:var(--gr-bg)',error:'color:var(--rd);background:var(--rd-bg)',warn:'color:var(--am);background:var(--am-bg)',info:'color:var(--bl);background:var(--bl-bg)'};
+  el.style.cssText=(colors[type]||colors.info)+';display:block;padding:8px 12px;border-radius:var(--rs)';
+  el.textContent=msg;
+}
+
+async function syncDown(){
+  if(!SB||!SB_USER)return;
+  setSyncStatus('syncing');
+  try{
+    const {data:an,error:e1}=await SB.from('anuncios').select('*').eq('user_id',SB_USER.id).order('created_at');
+    const {data:hi,error:e2}=await SB.from('historico').select('*').eq('user_id',SB_USER.id).order('created_at',{ascending:false}).limit(200);
+    if(e1||e2){setSyncStatus('error');return}
+    if(an&&an.length>0){
+      DATA=an.map(a=>({
+        id:a.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
+        preco:+a.preco||0,precoD:+a.preco_d||0,custo:+a.custo||0,
+        com:+a.com||11.5,ant:+a.ant||4.2,frete:+a.frete||0,ajml:+a.aj_ml||0,
+        descPct:+a.desc_pct||5,descMax:+a.desc_max||10,imp:+a.imp||10,
+        obs:a.obs||'',tags:{full:!!a.tag_full,oferta:!!a.tag_oferta,pub:!!a.tag_pub}
+      }));
+      NID=999999;// use UUIDs from supabase
+      sv();
+    } else {
+      // First time: push local data to Supabase
+      await syncUp(true);
+      return;
+    }
+    if(hi)HIST=hi.map(h=>({ts:new Date(h.created_at).toLocaleString('pt-BR'),msg:h.msg}));
+    setSyncStatus('connected');
+    renderDash();
+    if(document.getElementById('p-anuncios')?.style.display!=='none')renderAnuncios();
+  }catch(e){setSyncStatus('error')}
+}
+
+async function syncUp(silent=false){
+  if(!SB||!SB_USER)return;
+  if(!silent)setSyncStatus('syncing');
+  try{
+    // Delete all and re-insert (simple strategy for small dataset)
+    await SB.from('anuncios').delete().eq('user_id',SB_USER.id);
+    const rows=DATA.map(a=>({
+      user_id:SB_USER.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
+      preco:a.preco||0,preco_d:a.precoD||0,custo:a.custo||0,
+      com:a.com||11.5,ant:a.ant||4.2,frete:a.frete||0,aj_ml:a.ajml||0,
+      desc_pct:a.descPct||5,desc_max:a.descMax||10,imp:a.imp||10,
+      obs:a.obs||'',tag_full:!!(a.tags?.full),tag_oferta:!!(a.tags?.oferta),tag_pub:!!(a.tags?.pub)
+    }));
+    if(rows.length>0)await SB.from('anuncios').insert(rows);
+    if(!silent){setSyncStatus('connected');showCfgStatus('Dados enviados com sucesso!','ok')}
+    else setSyncStatus('connected');
+  }catch(e){setSyncStatus('error')}
+}
+
+async function desconectar(){
+  if(!confirm('Desconectar do Supabase? Os dados continuarão salvos localmente.'))return;
+  SB=null;SB_USER=null;
+  saveCfg({});
+  setSyncStatus('local');
+  updateCfgCard();
+  showCfgStatus('Desconectado. Dados mantidos localmente.','info');
+}
+
+// Override sv() to also sync after save
+const sv_orig=sv;
+function sv(){
+  sv_orig();
+  if(SB&&SB_USER)setTimeout(()=>syncUp(true),300);
+}
+
+// Override addH to also save hist to Supabase
+const addH_orig=addH;
+function addH(msg){
+  addH_orig(msg);
+  if(SB&&SB_USER){
+    SB.from('historico').insert({user_id:SB_USER.id,msg}).catch(()=>{});
+  }
+}
+
+// Load config into form fields when config tab opens
+function loadCfgFields(){
+  const cfg=getCfg();
+  const urlEl=document.getElementById('cfg-url');
+  const keyEl=document.getElementById('cfg-key');
+  if(urlEl&&cfg.url)urlEl.value=cfg.url;
+  if(keyEl&&cfg.key)keyEl.value=cfg.key;
+  updateCfgCard();
+}
+
+// Extend goTab to include config
+
 function goTab(t){
   document.querySelectorAll('[data-tab]').forEach(el=>el.classList.toggle('active',el.dataset.tab===t))
-  ;['dash','anuncios','sim','insights','hist'].forEach(p=>{
+  ;['dash','anuncios','sim','insights','hist','config','shopee','custos'].forEach(p=>{
     document.getElementById('p-'+p).style.display=p===t?'':'none'
   })
   if(t==='dash')renderDash()
   else if(t==='anuncios'){if(!activeFilter)populateFiltro();renderAnuncios()}
   else if(t==='insights')renderInsights()
   else if(t==='hist')renderHist()
+  else if(t==='config')loadCfgFields()
+  else if(t==='shopee')renderShopee()
+  else if(t==='custos')renderCustos()
   document.querySelector('.content').scrollTop=0
 }
 
@@ -744,8 +1097,11 @@ function renderAnuncios(){
     ?lista.map(a=>{
       const ok=a.margem>=16,sug=!ok?calcSug(a):null
       const tagsHtml=mkTags(a.tags)
-      return`<tr onclick="openModal(${a.id})">
-        <td style="font-family:var(--mono);font-size:11px;color:var(--t3)">${a.cod}</td>
+      return`<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--t3)">
+          <span title="Clique para copiar" style="cursor:pointer" onclick="copiarCod('${a.cod}')">${a.cod}</span>
+          <span id="copied-${a.id}" style="font-size:10px;color:var(--gr);display:none;margin-left:3px">✓</span>
+        </td>
         <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis">${a.nome}${tagsHtml?`<br><span style="display:inline-flex;gap:3px;margin-top:2px">${tagsHtml}</span>`:''}</td>
         <td>${tipoBadge(a.tipo||'classico')}</td>
         <td>${fmt(a.pv)}</td>
@@ -764,7 +1120,7 @@ function renderAnuncios(){
 
   document.getElementById('mob-cards').innerHTML=lista.length
     ?lista.map(a=>{
-      const ok=a.margem>=16,sug=!ok?calcSug(a):null
+      const ok=a.margem>=16;
       return`<div class="an-card" onclick="openModal(${a.id})">
         <div class="an-hdr"><div class="an-name">${a.nome}</div><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span></div>
         <div class="an-cod">${a.cod}</div>
@@ -776,7 +1132,7 @@ function renderAnuncios(){
           <span>Desc: <strong>${fmt(a.desc)}</strong></span>
         </div>
         <div class="an-bar"><div class="an-bar-fill" style="width:${Math.min(a.margem*2,100)}%;background:${ok?'var(--gr)':'var(--rd)'}"></div></div>
-        ${sug?`<div class="an-sug">Margem baixa — preço sugerido: <strong>${fmt(sug.pv)}</strong> (${sug.margem}%) <span class=\"sug-link\" onclick=\"event.stopPropagation();aplicarSug(${a.id},${sug.pv})\">Aplicar →</span></div>`:''}
+
         ${a.obs?`<div class="an-obs"><span>${a.obs}</span><button onclick="event.stopPropagation();remObs(${a.id})" style="background:none;border:none;cursor:pointer;color:var(--t3);font-size:12px">× remover</button></div>`:''}
       </div>`
     }).join('')
@@ -847,6 +1203,16 @@ function calcLive(){
   document.getElementById('rb-luc').style.color=ok?'var(--gr)':'var(--rd)'
   document.getElementById('rb-mar').textContent=r.margem.toFixed(2)+'%'
   document.getElementById('rb-mar').style.color=ok?'var(--gr)':'var(--rd)'
+  // Show price suggestion in modal
+  const sugEl=document.getElementById('m-sug');
+  if(sugEl&&editId){
+    const a=DATA.find(x=>x.id===editId);
+    const sug=!ok&&a?calcSug({...a,...getForm()}):null;
+    if(sug){
+      sugEl.style.display='';
+      sugEl.innerHTML=`Margem baixa — preço sugerido para atingir 20%: <strong>${fmt(sug.pv)}</strong> <button class="btn-sm" style="margin-left:8px" onclick="aplicarSugModal(${sug.pv})">Usar este preço</button>`;
+    } else sugEl.style.display='none';
+  }
 }
 
 function salvar(){
@@ -893,6 +1259,24 @@ function toggleTag(id,tag){
   if(document.getElementById('p-anuncios').style.display!=='none')renderAnuncios()
 }
 
+function copiarCod(cod){
+  navigator.clipboard.writeText(cod).catch(()=>{});
+}
+function inlineEdit(id,field,val){
+  const a=DATA.find(x=>x.id===id);if(!a)return;
+  const v=parseFloat(val)||0;
+  if(a[field]===v)return;
+  const old=a[field];a[field]=v;sv();
+  addH(`Editado inline: ${a.nome} — ${field}: ${old}→${v}`);
+  renderAnuncios();
+}
+function aplicarSugModal(pv){
+  const fi=document.getElementById('f-preco');
+  const fd=document.getElementById('f-precoD');
+  if(fi)fi.value=pv;
+  if(fd)fd.value='';
+  calcLive();
+}
 function aplicarSug(id,pv){
   const a=DATA.find(x=>x.id===id);if(!a)return
   const old=a.preco;a.preco=pv;a.precoD=0;sv()
@@ -935,15 +1319,34 @@ function simFrete(){
   simCalc()
 }
 
+let _simTimer=null;
 function syncP(from){
-  const r=document.getElementById('s-range'),i=document.getElementById('s-preco')
-  if(from==='range')i.value=r.value;else r.value=i.value
-  simCalc()
+  const r=document.getElementById('s-range'),i=document.getElementById('s-preco');
+  if(from==='range'){
+    i.value=r.value;
+    // Debounce heavy calc while dragging
+    clearTimeout(_simTimer);
+    _simTimer=setTimeout(simCalc,80);
+  } else {
+    r.value=i.value;
+    simCalc();
+  }
 }
 
 function sugs(custo,frete,ajml,descPct,descMax,ant,imp,com,alvo){
-  function p4m(m){const t=1-com/100-ant/100-imp/100;const p=(custo+frete-ajml+descMax)/(t-m/100);return p>0?Math.ceil(p*10)/10:null}
-  return[{l:'Conservador',m:Math.max(alvo-5,8)},{l:'Recomendado',m:alvo},{l:'Otimista',m:alvo+5}].map(s=>({...s,pv:p4m(s.m)})).filter(s=>s.pv>0)
+  function p4m(m){
+    const t=1-com/100-ant/100-imp/100;
+    const denom=t-m/100;
+    if(denom<=0.01)return null;
+    // Use descMax if pv will be large enough, else use descPct
+    const pCap=(custo+frete-ajml+descMax)/denom;
+    const pPct=(custo+frete-ajml)/((t-descPct/100)-m/100);
+    const threshold=descMax/(descPct/100);
+    const p=pCap>=threshold?pCap:(pPct>0?pPct:pCap);
+    if(!isFinite(p)||p<=0||p>50000)return null;
+    return Math.ceil(p*10)/10;
+  }
+  return[{l:'Conservador',m:Math.max(alvo-5,8)},{l:'Recomendado',m:alvo},{l:'Otimista',m:alvo+5}].map(s=>({...s,pv:p4m(s.m)})).filter(s=>s.pv>0&&s.pv<50000)
 }
 
 function simCalc(){
@@ -1078,7 +1481,396 @@ function renderHist(){
     :'<div class="empty">Nenhuma alteração ainda.</div>'
 }
 
-load();renderDash()
+
+
+// ── CATÁLOGO DE CUSTOS UI ──
+let _custos=null;
+function getCustosObj(){
+  if(!_custos){
+    const saved=localStorage.getItem('pfy_custos');
+    _custos=saved?JSON.parse(saved):{...CUSTOS};
+  }
+  return _custos;
+}
+function saveCustosObj(){localStorage.setItem('pfy_custos',JSON.stringify(_custos));}
+
+// Override getCusto to check local overrides first
+const _getCustoOrig=getCusto;
+function getCusto(nome){
+  const obj=getCustosObj();
+  if(!nome)return null;
+  const u=nome.toUpperCase().trim();
+  if(obj[u]!==undefined)return obj[u];
+  for(const k of Object.keys(obj)){if(u.includes(k)||k.includes(u))return obj[k];}
+  return null;
+}
+
+function renderCustos(){
+  const obj=getCustosObj();
+  const rows=Object.entries(obj).sort((a,b)=>a[0].localeCompare(b[0]));
+  document.getElementById('custos-body').innerHTML=rows.map(([nome,custo])=>`<tr>
+    <td style="font-weight:500">${nome}</td>
+    <td><input class="tbl-inp" type="number" step=".01" value="${custo}" onchange="updateCusto('${nome.replace(/'/g,"\\'")}',this.value)" style="width:90px"></td>
+    <td><button class="btn-sm" onclick="deleteCusto('${nome.replace(/'/g,"\\'")}')">Remover</button></td>
+  </tr>`).join('');
+}
+
+function updateCusto(nome,val){
+  const obj=getCustosObj();
+  obj[nome]=parseFloat(val)||0;
+  saveCustosObj();
+}
+
+function addCusto(){
+  const nome=prompt('Nome do produto (em maiúsculas):');
+  if(!nome||!nome.trim())return;
+  const val=parseFloat(prompt(`Custo de "${nome.trim()}" (R$):`));
+  if(isNaN(val))return;
+  const obj=getCustosObj();
+  obj[nome.trim().toUpperCase()]=val;
+  saveCustosObj();
+  renderCustos();
+}
+
+function deleteCusto(nome){
+  if(!confirm(`Remover "${nome}" do catálogo?`))return;
+  const obj=getCustosObj();
+  delete obj[nome];
+  saveCustosObj();
+  renderCustos();
+}
+
+// ════════════════════════════════════════
+// SHOPEE ENGINE
+// ════════════════════════════════════════
+const SK_SH='pfy_sh1';
+let SH_DATA=[],SH_NID=5000,shEditId=null;
+
+const SH_SEED=[
+  {cod:'22193979850',nome:'Coluna Áustria',status:'ativo',preco:400,precoD:400,custo:121.90,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'159551041562',nome:'Cúpula c/ Aro 40cm',status:'ativo',preco:82.90,precoD:82.90,custo:32,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:3.90,obs:''},
+  {cod:'2390398816',nome:'Kit 2 ABJ Mine',status:'ativo',preco:199,precoD:192.30,custo:74.58,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'58204324363',nome:'Adega Quebra Cabeça',status:'ativo',preco:215,precoD:67.40,custo:15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:2.71,obs:''},
+  {cod:'19097814271',nome:'Coluna Ipanema',status:'ativo',preco:425.50,precoD:300,custo:106.78,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'58254250635',nome:'ABJ Soft',status:'ativo',preco:110,precoD:104.50,custo:7,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:5.50,obs:''},
+  {cod:'27944203278',nome:'Coluna Mônaco',status:'ativo',preco:450,precoD:376.40,custo:105.87,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'433786115168',nome:'Coluna Mônaco',status:'ativo',preco:450,precoD:450,custo:105.87,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'18197841994',nome:'Coluna Áustria',status:'ativo',preco:449.90,precoD:308,custo:121.90,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'237973874700',nome:'Coluna Áustria',status:'ativo',preco:419.90,precoD:307,custo:121.90,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22893250174',nome:'Tábua de Carne',status:'ativo',preco:109,precoD:109,custo:45,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:5.45,obs:''},
+  {cod:'23193230521',nome:'Kit 2 Áustria',status:'ativo',preco:325.20,precoD:308.94,custo:128.30,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'58254313530',nome:'Adega Quebra Cabeça',status:'ativo',preco:200,precoD:72.50,custo:15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:7.25,obs:''},
+  {cod:'23294842789',nome:'Adega Quebra Cabeça',status:'ativo',preco:210,precoD:74.80,custo:15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:7.48,obs:''},
+  {cod:'58204322189',nome:'Suporte de Taças',status:'ativo',preco:130,precoD:48.20,custo:10,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:6.50,obs:''},
+  {cod:'22399353759',nome:'Suporte de Taças',status:'ativo',preco:120,precoD:45.70,custo:10,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:6,obs:''},
+  {cod:'58204313884',nome:'Suporte de Taças',status:'ativo',preco:150,precoD:48.20,custo:10,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:7.50,obs:''},
+  {cod:'58202122792',nome:'Cúpula Sem Aro 30cm',status:'ativo',preco:69.90,precoD:68.90,custo:28,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:3.50,obs:''},
+  {cod:'582030200148',nome:'Cúpula Sem Aro 40cm',status:'ativo',preco:68.90,precoD:68.90,custo:32,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:3.45,obs:''},
+  {cod:'193978342641',nome:'ABJ Áustria',status:'ativo',preco:175.30,precoD:169.40,custo:64.15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:8.77,obs:''},
+  {cod:'139980263457',nome:'Coluna Áustria',status:'ativo',preco:409,precoD:352.10,custo:121.90,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'19599382192',nome:'ABJ Sky',status:'ativo',preco:309,precoD:287.50,custo:106.41,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'20197784843',nome:'ABJ Áustria',status:'ativo',preco:182.31,precoD:172.30,custo:64.15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:9.12,obs:''},
+  {cod:'20299369764',nome:'ABJ Mine',status:'ativo',preco:119,precoD:115.30,custo:37.29,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:5.95,obs:''},
+  {cod:'20598024793',nome:'Coluna Viena',status:'ativo',preco:439.90,precoD:439.90,custo:112.08,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'20697762024',nome:'ABJ Wood',status:'ativo',preco:309,precoD:276,custo:106.41,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'21697653502',nome:'ABJ Slim',status:'ativo',preco:138.90,precoD:138.90,custo:43.25,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:6.95,obs:''},
+  {cod:'22093573032',nome:'ABJ Soft',status:'ativo',preco:119,precoD:113.20,custo:32,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:5.95,obs:''},
+  {cod:'22398462096',nome:'Coluna Viena',status:'ativo',preco:358.90,precoD:321,custo:112.08,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22493964941',nome:'Coluna Floripa',status:'ativo',preco:337.50,precoD:304,custo:117.02,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22593250426',nome:'ABJ Wells',status:'ativo',preco:200,precoD:156.30,custo:52.86,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23498846932',nome:'Coluna Wells',status:'ativo',preco:409.90,precoD:318.20,custo:108.33,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23697717100',nome:'Kit 2 ABJ Áustria',status:'ativo',preco:319.90,precoD:319.90,custo:128.30,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23892445566',nome:'ABJ Slim',status:'ativo',preco:200,precoD:136.90,custo:43.25,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:8.21,obs:''},
+  {cod:'23897727991',nome:'ABJ Wells',status:'ativo',preco:210,precoD:154.30,custo:52.86,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:9.26,obs:''},
+  {cod:'22399391615',nome:'ABJ Sky',status:'ativo',preco:329,precoD:269.80,custo:106.41,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22449060147',nome:'ABJ Áustria',status:'ativo',preco:200,precoD:200,custo:64.15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'58250941172',nome:'Coluna Áustria S/ Cúpula',status:'ativo',preco:309.90,precoD:287.20,custo:91,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22893223707',nome:'ABJ Mine',status:'ativo',preco:109.90,precoD:124.30,custo:37.29,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:5.50,obs:''},
+  {cod:'18897692133',nome:'ABJ Mine',status:'ativo',preco:200,precoD:132.30,custo:37.29,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23493264392',nome:'Coluna Viena',status:'ativo',preco:439.90,precoD:334,custo:112.08,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'31697762923',nome:'Coluna Viena',status:'ativo',preco:389.90,precoD:305,custo:112.08,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23798020421',nome:'ABJ Sky',status:'ativo',preco:290,precoD:290,custo:106.41,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23799198216',nome:'ABJ Áustria',status:'ativo',preco:250,precoD:172.10,custo:64.15,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'23397727093',nome:'Kit 2 ABJ Áustria',status:'ativo',preco:331.20,precoD:314.64,custo:128.30,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'21990306741',nome:'Coluna Floripa',status:'ativo',preco:419.90,precoD:304,custo:117.02,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22993031980',nome:'Coluna Áustria',status:'ativo',preco:419.90,precoD:304,custo:121.90,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:10,obs:''},
+  {cod:'22398019973',nome:'ABJ Mine',status:'ativo',preco:150,precoD:122.40,custo:37.29,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:7.34,obs:''},
+  {cod:'2349234226',nome:'ABJ Slim',status:'ativo',preco:150,precoD:134.20,custo:43.25,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:7.50,obs:''},
+  {cod:'1000000000',nome:'Pendente Cone Sisal',status:'ativo',preco:160,precoD:134.50,custo:54,com:14,ant:6,imp:10,frete:0,outros:0,descPct:5,descMax:8,obs:''},
+];
+
+function svSH(){localStorage.setItem(SK_SH,JSON.stringify(SH_DATA))}
+
+function loadShopee(){
+  try{
+    const s=localStorage.getItem(SK_SH);
+    if(s){SH_DATA=JSON.parse(s);SH_NID=Math.max(...SH_DATA.map(a=>+a.id||0),4999)+1}
+    else{SH_DATA=SH_SEED.map((a,i)=>({...a,id:5000+i}));SH_NID=5000+SH_DATA.length;svSH()}
+  }catch(e){SH_DATA=SH_SEED.map((a,i)=>({...a,id:5000+i}));SH_NID=5000+SH_DATA.length;svSH()}
+}
+
+function calcSH(a){
+  const pv=(+a.precoD>0)?(+a.precoD):(+a.preco||0);
+  const custo=+a.custo||0;
+  const com=(+a.com||14)/100*pv;
+  const ant=(+a.ant||6)/100*pv;
+  const frete=+a.frete||0;
+  const outros=+a.outros||0;
+  const desc=Math.min((+a.descPct||0)/100*pv,+a.descMax||999);
+  const imp=(+a.imp||10)/100*pv;
+  const lucro=pv-custo-com-ant-frete-outros-desc-imp;
+  return{pv,custo,com,ant,frete,outros,desc,imp,lucro,margem:pv>0?lucro/pv*100:0}
+}
+
+function shAutoFill(){
+  const nome=document.getElementById('sh-f-nome')?.value||'';
+  const ce=document.getElementById('sh-f-custo');
+  if(!ce||+ce.value>0)return;
+  const c=getCusto(nome);
+  if(c!==null){ce.value=c;shCalcLive();}
+}
+
+function shCalcLive(){
+  const f=shGetForm();
+  if(!f.preco&&!f.custo){document.getElementById('sh-m-result').style.display='none';return}
+  const r=calcSH(f),ok=r.margem>=16;
+  document.getElementById('sh-m-result').style.display='';
+  document.getElementById('sh-rb-pv').textContent=fmt(r.pv);
+  document.getElementById('sh-rb-desc').textContent=fmt(r.desc);
+  document.getElementById('sh-rb-luc').textContent=fmt(r.lucro);
+  document.getElementById('sh-rb-luc').style.color=ok?'var(--gr)':'var(--rd)';
+  document.getElementById('sh-rb-mar').textContent=r.margem.toFixed(2)+'%';
+  document.getElementById('sh-rb-mar').style.color=ok?'var(--gr)':'var(--rd)';
+  // Suggestion
+  const sugEl=document.getElementById('sh-m-sug');
+  if(sugEl&&!ok){
+    const sug=calcSugSH(f);
+    if(sug){
+      sugEl.style.display='';
+      sugEl.innerHTML=`Margem baixa — sugestão para 20%: <strong>${fmt(sug.pv)}</strong> <button class="btn-sm" style="margin-left:8px" onclick="shAplicarSug(${sug.pv})">Usar</button>`;
+    } else sugEl.style.display='none';
+  } else if(sugEl) sugEl.style.display='none';
+}
+
+function calcSugSH(a){
+  const alvo=20,com=(+a.com||14)/100,ant=(+a.ant||6)/100,imp=(+a.imp||10)/100;
+  const custo=+a.custo||0,frete=+a.frete||0,outros=+a.outros||0,descMax=+a.descMax||10,descPct=(+a.descPct||5)/100;
+  const t=1-com-ant-imp,denom=t-alvo/100;
+  if(denom<=0.01)return null;
+  const pCap=(custo+frete+outros+descMax)/denom;
+  const denomPct=t-descPct-alvo/100;
+  const pPct=denomPct>0.01?(custo+frete+outros)/denomPct:null;
+  const threshold=descPct>0?descMax/descPct:9999;
+  const pv=pCap>=threshold?pCap:(pPct&&pPct>0?pPct:pCap);
+  if(!isFinite(pv)||pv<=0||pv>50000)return null;
+  const pvEff=(+a.precoD>0)?(+a.precoD):(+a.preco||0);
+  if(pv<=pvEff)return null;
+  return{pv:Math.ceil(pv*10)/10,margem:alvo}
+}
+
+function shAplicarSug(pv){
+  const fi=document.getElementById('sh-f-preco');
+  const fd=document.getElementById('sh-f-precoD');
+  if(fi)fi.value=pv;if(fd)fd.value='';
+  shCalcLive();
+}
+
+function shGetForm(){
+  const n=v=>parseFloat(document.getElementById(v)?.value)||0;
+  const s=v=>document.getElementById(v)?.value||'';
+  return{nome:s('sh-f-nome'),cod:s('sh-f-cod'),status:s('sh-f-status'),obs:s('sh-f-obs'),
+    custo:n('sh-f-custo'),preco:n('sh-f-preco'),precoD:n('sh-f-precoD'),
+    frete:n('sh-f-frete'),outros:n('sh-f-outros'),com:n('sh-f-com'),ant:n('sh-f-ant'),imp:n('sh-f-imp'),
+    descPct:n('sh-f-descpct'),descMax:n('sh-f-descmax')}
+}
+
+function openShopeeModal(id){
+  shEditId=id||null;
+  const a=id?SH_DATA.find(x=>x.id===id):null;
+  document.getElementById('sh-m-title').textContent=a?'Editar anúncio Shopee':'Novo anúncio Shopee';
+  const bd=document.getElementById('sh-btn-del');if(bd)bd.style.display=a?'':'none';
+  const g=(f,v)=>{const el=document.getElementById(f);if(el)el.value=v??'';}
+  g('sh-f-nome',a?.nome||'');g('sh-f-cod',a?.cod||'');g('sh-f-status',a?.status||'ativo');
+  g('sh-f-custo',a?.custo||'');g('sh-f-preco',a?.preco||'');g('sh-f-precoD',a?.precoD||'');
+  g('sh-f-frete',a?.frete??'');g('sh-f-outros',a?.outros??'');
+  g('sh-f-com',a?.com??14);g('sh-f-ant',a?.ant??6);g('sh-f-imp',a?.imp??10);
+  g('sh-f-descpct',a?.descPct??5);g('sh-f-descmax',a?.descMax??10);
+  g('sh-f-obs',a?.obs||'');
+  document.getElementById('sh-m-result').style.display='none';
+  document.getElementById('sh-overlay').classList.add('open');
+  shCalcLive();
+  setTimeout(()=>document.getElementById('sh-f-nome').focus(),50);
+}
+
+function closeShopeeModal(){document.getElementById('sh-overlay').classList.remove('open');shEditId=null}
+
+function salvarShopee(){
+  const f=shGetForm();
+  if(!f.nome.trim())return alert('Informe o nome do produto');
+  if(shEditId){
+    const old=SH_DATA.find(a=>a.id===shEditId);
+    const ch=Object.keys(f).filter(k=>String(old[k])!==String(f[k])).map(k=>`${k}:${old[k]}→${f[k]}`).join(', ');
+    Object.assign(old,f);svSH();
+    if(ch)addH(`[Shopee] Editado: ${f.nome} — ${ch}`);
+  } else {
+    SH_DATA.push({...f,id:SH_NID++});svSH();
+    addH(`[Shopee] Novo: ${f.nome} (${f.cod})`);
+  }
+  closeShopeeModal();renderShopee();
+}
+
+function deletarShopee(){
+  if(!shEditId)return;
+  const a=SH_DATA.find(x=>x.id===shEditId);
+  if(!confirm(`Remover "${a?.nome}" da Shopee?`))return;
+  SH_DATA=SH_DATA.filter(x=>x.id!==shEditId);svSH();
+  addH(`[Shopee] Removido: ${a?.nome}`);
+  closeShopeeModal();renderShopee();
+}
+
+function shInlineEdit(id,field,val){
+  const a=SH_DATA.find(x=>x.id===id);if(!a)return;
+  const v=parseFloat(val)||0;
+  if(a[field]===v)return;
+  const old=a[field];a[field]=v;svSH();
+  addH(`[Shopee] Editado inline: ${a.nome} — ${field}: ${old}→${v}`);
+  renderShopee();
+}
+
+function renderShopee(){
+  const todos=SH_DATA.map(a=>({...a,...calcSH(a)}));
+  const ok=todos.filter(a=>a.margem>=16),nok=todos.filter(a=>a.margem<16);
+  const avg=todos.length?todos.reduce((s,a)=>s+a.margem,0)/todos.length:0;
+  const crit=todos.filter(a=>a.margem<10);
+
+  const ss=document.getElementById('sh-sub');if(ss)ss.textContent=`${todos.length} anúncios · média ${avg.toFixed(1)}%`;
+
+  const alEl=document.getElementById('sh-alerts');
+  if(alEl){
+    const al=[];
+    if(crit.length)al.push(`<div class="alert al-rd"><span>⚠</span><span><strong>${crit.length} anúncio${crit.length>1?'s':''}</strong> com margem abaixo de 10%</span></div>`);
+    if(!crit.length&&avg>=18)al.push(`<div class="alert al-bl"><span>✓</span><span>Shopee saudável — margem média ${avg.toFixed(1)}%</span></div>`);
+    alEl.innerHTML=al.join('');
+  }
+
+  const dm=document.getElementById('sh-metrics');
+  if(dm)dm.innerHTML=`
+    <div class="met"><div class="met-label">Total</div><div class="met-val">${todos.length}</div></div>
+    <div class="met"><div class="met-label">Margem média</div><div class="met-val" style="color:${avg>=16?'var(--gr)':'var(--rd)'}">${avg.toFixed(1)}%</div></div>
+    <div class="met click" onclick=""><div class="met-label" style="color:${nok.length?'var(--rd)':'var(--t3)'}">Não saudáveis</div><div class="met-val" style="color:${nok.length?'var(--rd)':'var(--t)'}">${nok.length}</div><div class="met-sub">${crit.length} críticos</div></div>
+    <div class="met"><div class="met-label">Saudáveis</div><div class="met-val" style="color:var(--gr)">${ok.length}</div></div>`;
+
+  const sorted=[...todos].sort((a,b)=>b.margem-a.margem);
+  const mkR=(list,cls)=>list.map(a=>`<div class="ri" onclick="openShopeeModal(${a.id})">
+    <div><div class="ri-name">${a.nome}</div><div class="ri-cod">${a.cod}</div></div>
+    <div class="ri-right"><span class="badge ${cls}">${a.margem.toFixed(1)}%</span><div class="ri-sub">${fmt(a.lucro)}</div></div>
+  </div>`).join('');
+  document.getElementById('sh-top').innerHTML=mkR(sorted.slice(0,5),'b-ok');
+  document.getElementById('sh-bot').innerHTML=mkR(sorted.slice(-5).reverse(),'b-nok');
+
+  // Filter
+  const q=(document.getElementById('sh-busca')?.value||'').toLowerCase();
+  const st=document.getElementById('sh-fstatus')?.value||'';
+  let lista=todos.filter(a=>{
+    if(q&&!a.nome.toLowerCase().includes(q)&&!(a.cod+'').includes(q))return false;
+    if(st==='ok'&&a.margem<16)return false;
+    if(st==='nok'&&a.margem>=16)return false;
+    return true;
+  });
+
+  document.getElementById('sh-tbl-body').innerHTML=lista.length
+    ?lista.map(a=>{
+      const ok=a.margem>=16;
+      const stBadge=a.status==='ativo'?'<span class=\"badge b-ok\">Ativo</span>':a.status==='pausado'?'<span class=\"badge b-warn\">Pausado</span>':'<span class=\"badge b-nok\">Inativo</span>';
+      return`<tr>
+        <td style="font-family:var(--mono);font-size:11px;color:var(--t3);cursor:pointer" onclick="copiarCod('${a.cod}')" title="Copiar">${a.cod}</td>
+        <td style="font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="openShopeeModal(${a.id})">${a.nome}</td>
+        <td>${stBadge}</td>
+        <td>${fmt(a.preco)}</td>
+        <td><input class="tbl-inp" type="number" value="${a.precoD>0?a.precoD:a.preco}" onchange="shInlineEdit(${a.id},'precoD',this.value)" onclick="event.stopPropagation()" style="width:80px"></td>
+        <td><input class="tbl-inp" type="number" value="${a.custo}" onchange="shInlineEdit(${a.id},'custo',this.value)" onclick="event.stopPropagation()" style="width:72px"></td>
+        <td style="color:var(--t2)">${fmt(a.com)}</td>
+        <td><input class="tbl-inp" type="number" value="${a.frete}" onchange="shInlineEdit(${a.id},'frete',this.value)" onclick="event.stopPropagation()" style="width:65px"></td>
+        <td style="color:var(--t2)">${fmt(a.desc)}</td>
+        <td style="font-weight:500;color:${ok?'var(--gr)':'var(--rd)'}">${fmt(a.lucro)}</td>
+        <td><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span><div class="mbar"><div class="mbar-fill" style="width:${Math.min(a.margem*2,100)}%;background:${ok?'var(--gr)':'var(--rd)'}"></div></div></td>
+        <td style="font-size:12px;color:var(--t2);max-width:120px">${a.obs||'—'}</td>
+        <td><button class="btn-sm" onclick="openShopeeModal(${a.id})">Editar</button></td>
+      </tr>`;
+    }).join('')
+    :`<tr><td colspan="13"><div class="empty">Nenhum resultado</div></td></tr>`;
+
+  document.getElementById('sh-mob-cards').innerHTML=lista.map(a=>{
+    const ok=a.margem>=16;
+    return`<div class="an-card" onclick="openShopeeModal(${a.id})">
+      <div class="an-hdr"><div class="an-name">${a.nome}</div><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span></div>
+      <div class="an-cod">${a.cod}</div>
+      <div class="an-stats">
+        <span>Preço: <strong>${fmt(a.pv)}</strong></span>
+        <span>Lucro: <strong style="color:${ok?'var(--gr)':'var(--rd)'}">${fmt(a.lucro)}</strong></span>
+        <span>Taxa: <strong>${fmt(a.com)}</strong></span>
+      </div>
+      <div class="an-bar"><div class="an-bar-fill" style="width:${Math.min(a.margem*2,100)}%;background:${ok?'var(--gr)':'var(--rd)'}"></div></div>
+      ${a.obs?`<div class="an-obs"><span>${a.obs}</span></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// Add event listener for shopee search
+document.addEventListener('DOMContentLoaded',()=>{
+  const si=document.getElementById('sh-busca');
+  if(si)si.addEventListener('input',renderShopee);
+});
+
+
+load();loadShopee();initSupabase().then(()=>renderDash())
 </script>
 </body>
 </html>
+<!-- MODAL SHOPEE -->
+<div class="overlay" id="sh-overlay" onclick="if(event.target===this)closeShopeeModal()">
+<div class="modal">
+  <div class="modal-hdr">
+    <div class="modal-title" id="sh-m-title">Novo anúncio Shopee</div>
+    <button class="modal-x" onclick="closeShopeeModal()">×</button>
+  </div>
+  <div id="sh-m-result" class="rbox" style="display:none">
+    <div><div class="rbox-label">Preço efetivo</div><div class="rbox-val" id="sh-rb-pv">—</div></div>
+    <div><div class="rbox-label">Desconto</div><div class="rbox-val" id="sh-rb-desc">—</div></div>
+    <div><div class="rbox-label">Lucro líquido</div><div class="rbox-val" id="sh-rb-luc">—</div></div>
+    <div><div class="rbox-label">Margem</div><div class="rbox-val" id="sh-rb-mar">—</div></div>
+  </div>
+  <div id="sh-m-sug" style="display:none;font-size:13px;color:var(--am);background:var(--am-bg);border:1px solid var(--am-bd);border-radius:var(--rs);padding:9px 12px;margin-bottom:12px"></div>
+  <div class="fg2">
+    <div class="field"><label>Nome do produto</label><input id="sh-f-nome" placeholder="Ex: Coluna Áustria" oninput="shAutoFill();shCalcLive()"></div>
+    <div class="field"><label>Código Shopee</label><input id="sh-f-cod" placeholder="ID do anúncio" inputmode="numeric"></div>
+  </div>
+  <div class="field"><label>Status</label>
+    <select id="sh-f-status"><option value="ativo">Ativo</option><option value="inativo">Inativo</option><option value="pausado">Pausado</option></select>
+  </div>
+  <div class="fsep">Preços e custo</div>
+  <div class="fg3">
+    <div class="field"><label>Custo (R$)</label><input id="sh-f-custo" type="number" step=".01" inputmode="decimal" oninput="shCalcLive()"></div>
+    <div class="field"><label>Preço s/ desc (R$)</label><input id="sh-f-preco" type="number" step=".01" inputmode="decimal" oninput="shCalcLive()"></div>
+    <div class="field"><label>Preço c/ desc (R$)</label><input id="sh-f-precoD" type="number" step=".01" inputmode="decimal" placeholder="0 = mesmo" oninput="shCalcLive()"></div>
+  </div>
+  <div class="fsep">Taxas Shopee</div>
+  <div class="fg3">
+    <div class="field"><label>Comissão Shopee (%)</label><input id="sh-f-com" type="number" step=".1" value="14" inputmode="decimal" oninput="shCalcLive()"></div>
+    <div class="field"><label>Antecipação + Camp (%)</label><input id="sh-f-ant" type="number" step=".1" value="6" inputmode="decimal" oninput="shCalcLive()"></div>
+    <div class="field"><label>Imposto (%)</label><input id="sh-f-imp" type="number" step=".1" value="10" inputmode="decimal" oninput="shCalcLive()"></div>
+  </div>
+  <div class="fg3">
+    <div class="field"><label>Frete (R$)</label><input id="sh-f-frete" type="number" step=".01" inputmode="decimal" placeholder="0,00" oninput="shCalcLive()"></div>
+    <div class="field"><label>Outros custos (R$)</label><input id="sh-f-outros" type="number" step=".01" inputmode="decimal" placeholder="0,00" oninput="shCalcLive()"></div>
+    <div class="field"><label>Desc cupom (%)</label><input id="sh-f-descpct" type="number" step=".1" value="5" inputmode="decimal" oninput="shCalcLive()"></div>
+  </div>
+  <div class="field"><label>Limite máx. desconto (R$)</label><input id="sh-f-descmax" type="number" step=".01" value="10" inputmode="decimal" oninput="shCalcLive()"></div>
+  <div class="field"><label>Observação</label><input id="sh-f-obs" placeholder="Ex: produto em promoção..."></div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="salvarShopee()" style="flex:1;background:var(--pu);border-color:var(--pu)">Salvar</button>
+    <button class="btn btn-d" id="sh-btn-del" onclick="deletarShopee()" style="display:none">Remover</button>
+    <button class="btn" onclick="closeShopeeModal()">Cancelar</button>
+  </div>
+</div>
+</div>
