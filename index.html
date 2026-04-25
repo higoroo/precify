@@ -412,10 +412,10 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
       Sem Supabase, os dados ficam salvos <strong>só neste navegador</strong>. Conectando, você acessa de qualquer dispositivo e os dados ficam na nuvem.<br>
       <span style="color:var(--t3);font-size:12px">Seus dados atuais do localStorage <strong>não serão perdidos</strong> — eles serão enviados ao Supabase na primeira conexão.</span>
     </div>
-    <div class="field"><label>URL do projeto Supabase</label><input id="cfg-url" type="url" placeholder="https://xxxx.supabase.co"></div>
-    <div class="field"><label>Chave anon (public)</label><input id="cfg-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIs..."></div>
+    <div class="field"><label>URL do projeto</label><input id="cfg-url" type="text" readonly style="color:var(--t3);font-size:12px;font-family:var(--mono)"></div>
+    <div class="field"><label>Chave anon</label><input id="cfg-key" type="password" readonly></div>
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="btn btn-p" onclick="salvarConfig()" style="flex:1">Salvar e conectar</button>
+      <button class="btn btn-p" onclick="salvarConfig()" style="flex:1">Conectar ao Supabase</button>
       <button class="btn" onclick="testarConexao()">Testar conexão</button>
     </div>
     <div id="cfg-status" style="font-size:13px;padding:8px;border-radius:var(--rs);display:none"></div>
@@ -821,29 +821,58 @@ function setSyncStatus(state){
   dot.style.background=s.c;lbl.textContent=s.t;
 }
 
+// FIXED credentials embedded - change if needed
+const SB_URL='https://ckqrahgkkzglqoptrvqg.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrcXJhaGdra3pnbHFvcHRydnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTA0NDUsImV4cCI6MjA5MjQ2NjQ0NX0.zUmMQLRGa-wU2rHd9bJ7JVwL9-32awo1VgCatY8-Qr8';
+const SB_EMAIL='precify@app.local';
+const SB_PASS='Precify@2025!';
+
 async function initSupabase(){
-  let cfg=getCfg();
-  // Use hardcoded defaults if no config saved
-  if(!cfg.url||!cfg.key){
-    cfg={url:'https://ckqrahgkkzglqoptrvqg.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrcXJhaGdra3pnbHFvcHRydnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTA0NDUsImV4cCI6MjA5MjQ2NjQ0NX0.zUmMQLRGa-wU2rHd9bJ7JVwL9-32awo1VgCatY8-Qr8'};
-    saveCfg(cfg);
-  }
   try{
     setSyncStatus('connecting');
-    SB=window.supabase.createClient(cfg.url,cfg.key);
-    const {data:{user},error}=await SB.auth.getUser();
-    if(error||!user){
-      // Try anonymous sign-in
-      const {data,error:e2}=await SB.auth.signInAnonymously();
-      if(e2){setSyncStatus('error');SB=null;return}
-      SB_USER=data.user;
-    } else {
-      SB_USER=user;
+    SB=window.supabase.createClient(SB_URL,SB_KEY);
+
+    // Try to get existing session first
+    const {data:{session}}=await SB.auth.getSession();
+    if(session?.user){
+      SB_USER=session.user;
+      setSyncStatus('connected');
+      updateCfgCard();
+      await syncDown();
+      return;
     }
-    setSyncStatus('connected');
-    updateCfgCard();
-    await syncDown();
-  }catch(e){setSyncStatus('error');SB=null}
+
+    // Try sign in with fixed credentials
+    const {data:signIn,error:e1}=await SB.auth.signInWithPassword({email:SB_EMAIL,password:SB_PASS});
+    if(signIn?.user){
+      SB_USER=signIn.user;
+      setSyncStatus('connected');
+      updateCfgCard();
+      await syncDown();
+      return;
+    }
+
+    // If sign in fails, try sign up (first time)
+    const {data:signUp,error:e2}=await SB.auth.signUp({email:SB_EMAIL,password:SB_PASS});
+    if(signUp?.user){
+      SB_USER=signUp.user;
+      setSyncStatus('connected');
+      updateCfgCard();
+      await syncDown();
+      return;
+    }
+
+    // All failed
+    const errMsg=(e1||e2)?.message||'desconhecido';
+    console.error('Supabase auth error:',e1,e2);
+    setSyncStatus('error');
+    showCfgStatus('Erro de autenticação: '+errMsg,'error');
+    SB=null;
+  }catch(e){
+    console.error('Supabase exception:',e);
+    setSyncStatus('error');
+    SB=null;
+  }
 }
 
 function updateCfgCard(){
@@ -852,36 +881,41 @@ function updateCfgCard(){
   if(!card||!info)return;
   if(SB&&SB_USER){
     card.style.display='';
-    info.textContent='Conectado. ID do usuário: '+SB_USER.id.slice(0,8)+'...';
+    info.innerHTML='<span style="color:var(--gr)">✓ Conectado ao Supabase</span> — '+DATA.length+' anúncios ML, '+SH_DATA.length+' anúncios Shopee sincronizados.';
   } else {
     card.style.display='none';
   }
 }
 
 async function salvarConfig(){
-  const url=(document.getElementById('cfg-url')?.value||'').trim();
-  const key=(document.getElementById('cfg-key')?.value||'').trim();
-  if(!url||!key){showCfgStatus('Preencha URL e chave','error');return}
-  saveCfg({url,key});
-  showCfgStatus('Salvando...','info');
+  showCfgStatus('Conectando...','info');
   SB=null;SB_USER=null;
   await initSupabase();
   if(SB){showCfgStatus('Conectado com sucesso!','ok')}
-  else{showCfgStatus('Erro ao conectar. Verifique URL e chave.','error')}
+  else{showCfgStatus('Erro ao conectar. Veja o console do navegador (F12) para detalhes.','error')}
 }
 
 async function testarConexao(){
-  const url=(document.getElementById('cfg-url')?.value||'').trim();
-  const key=(document.getElementById('cfg-key')?.value||'').trim();
-  if(!url||!key){showCfgStatus('Preencha URL e chave primeiro','error');return}
-  showCfgStatus('Testando...','info');
+  showCfgStatus('Testando conexão...','info');
   try{
-    const tb=window.supabase.createClient(url,key);
+    const tb=window.supabase.createClient(SB_URL,SB_KEY);
+    // First test basic connectivity
     const {error}=await tb.from('anuncios').select('id').limit(1);
-    if(error&&error.code==='42P01'){showCfgStatus('Conectou! Mas a tabela ainda não existe. Execute o supabase_schema.sql.','warn')}
-    else if(error){showCfgStatus('Erro: '+error.message,'error')}
-    else{showCfgStatus('Conexão OK! Tabelas encontradas.','ok')}
-  }catch(e){showCfgStatus('Erro: '+e.message,'error')}
+    if(error&&error.code==='42P01'){
+      showCfgStatus('✓ Conectou ao Supabase! Mas a tabela não existe ainda. Execute o supabase_schema.sql no SQL Editor.','warn');
+    } else if(error&&error.message?.includes('JWT')){
+      showCfgStatus('Erro de chave JWT. Verifique a chave anon no Supabase.','error');
+    } else if(error&&error.code==='PGRST301'){
+      showCfgStatus('✓ Conectou! Tabela existe mas precisa de permissão (execute o schema SQL).','warn');
+    } else if(error){
+      showCfgStatus('Erro: '+error.code+' — '+error.message,'error');
+    } else {
+      showCfgStatus('✓ Conexão OK! Banco de dados funcionando.','ok');
+      await initSupabase();
+    }
+  }catch(e){
+    showCfgStatus('Erro de rede: '+e.message+'. Verifique se o URL está correto.','error');
+  }
 }
 
 function showCfgStatus(msg,type){
@@ -941,8 +975,8 @@ async function syncUp(silent=false){
 
 async function desconectar(){
   if(!confirm('Desconectar do Supabase? Os dados continuarão salvos localmente.'))return;
+  if(SB)await SB.auth.signOut().catch(()=>{});
   SB=null;SB_USER=null;
-  saveCfg({});
   setSyncStatus('local');
   updateCfgCard();
   showCfgStatus('Desconectado. Dados mantidos localmente.','info');
@@ -966,12 +1000,10 @@ function addH(msg){
 
 // Load config into form fields when config tab opens
 function loadCfgFields(){
-  let cfg=getCfg();
-  if(!cfg.url)cfg={url:'https://ckqrahgkkzglqoptrvqg.supabase.co',key:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrcXJhaGdra3pnbHFvcHRydnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTA0NDUsImV4cCI6MjA5MjQ2NjQ0NX0.zUmMQLRGa-wU2rHd9bJ7JVwL9-32awo1VgCatY8-Qr8'};
   const urlEl=document.getElementById('cfg-url');
   const keyEl=document.getElementById('cfg-key');
-  if(urlEl&&cfg.url)urlEl.value=cfg.url;
-  if(keyEl&&cfg.key)keyEl.value=cfg.key;
+  if(urlEl)urlEl.value=SB_URL;
+  if(keyEl)keyEl.value=SB_KEY;
   updateCfgCard();
 }
 
