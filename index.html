@@ -891,8 +891,8 @@ async function salvarConfig(){
   showCfgStatus('Conectando...','info');
   SB=null;SB_USER=null;
   await initSupabase();
-  if(SB){showCfgStatus('Conectado com sucesso!','ok')}
-  else{showCfgStatus('Erro ao conectar. Veja o console do navegador (F12) para detalhes.','error')}
+  if(SB){setSyncStatus('connected');showCfgStatus('Conectado com sucesso!','ok');updateCfgCard();}
+  else{setSyncStatus('error');showCfgStatus('Erro ao conectar. Abra o console (F12) para detalhes.','error')}
 }
 
 async function testarConexao(){
@@ -929,9 +929,18 @@ async function syncDown(){
   if(!SB||!SB_USER)return;
   setSyncStatus('syncing');
   try{
-    const {data:an,error:e1}=await SB.from('anuncios').select('*').eq('user_id',SB_USER.id).order('created_at');
-    const {data:hi,error:e2}=await SB.from('historico').select('*').eq('user_id',SB_USER.id).order('created_at',{ascending:false}).limit(200);
-    if(e1||e2){setSyncStatus('error');return}
+    const [
+      {data:an,error:e1},
+      {data:sh,error:e2},
+      {data:hi,error:e3}
+    ]=await Promise.all([
+      SB.from('anuncios').select('*').eq('user_id',SB_USER.id).order('created_at'),
+      SB.from('anuncios_shopee').select('*').eq('user_id',SB_USER.id).order('created_at'),
+      SB.from('historico').select('*').eq('user_id',SB_USER.id).order('created_at',{ascending:false}).limit(200)
+    ]);
+    if(e1){console.error('ML fetch error:',e1);}
+    if(e2){console.error('Shopee fetch error:',e2);}
+    // ML data
     if(an&&an.length>0){
       DATA=an.map(a=>({
         id:a.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
@@ -940,25 +949,40 @@ async function syncDown(){
         descPct:+a.desc_pct||5,descMax:+a.desc_max||10,imp:+a.imp||10,
         obs:a.obs||'',tags:{full:!!a.tag_full,oferta:!!a.tag_oferta,pub:!!a.tag_pub}
       }));
-      NID=999999;// use UUIDs from supabase
-      sv();
-    } else {
-      // First time: push local data to Supabase
+      NID=999999;
+    }
+    // Shopee data
+    if(sh&&sh.length>0){
+      SH_DATA=sh.map(a=>({
+        id:a.id,cod:a.cod||'',nome:a.nome||'',status:a.status||'ativo',
+        preco:+a.preco||0,precoD:+a.preco_d||0,custo:+a.custo||0,
+        ant:+a.ant||6,frete:+a.frete||0,outros:+a.outros||0,
+        descPct:+a.desc_pct||5,descMax:+a.desc_max||10,imp:+a.imp||10,obs:a.obs||''
+      }));
+      SH_NID=999999;
+    }
+    // First time? Push local data up
+    if((!an||an.length===0)&&(!sh||sh.length===0)){
       await syncUp(true);
-      return;
+    } else {
+      // Save to localStorage
+      localStorage.setItem(SK,JSON.stringify(DATA));
+      localStorage.setItem(SK_SH,JSON.stringify(SH_DATA));
     }
     if(hi)HIST=hi.map(h=>({ts:new Date(h.created_at).toLocaleString('pt-BR'),msg:h.msg}));
     setSyncStatus('connected');
+    updateCfgCard();
     renderDash();
     if(document.getElementById('p-anuncios')?.style.display!=='none')renderAnuncios();
-  }catch(e){setSyncStatus('error')}
+    if(document.getElementById('p-shopee')?.style.display!=='none')renderShopee();
+  }catch(e){console.error('syncDown error:',e);setSyncStatus('error')}
 }
 
 async function syncUp(silent=false){
   if(!SB||!SB_USER)return;
   if(!silent)setSyncStatus('syncing');
   try{
-    // Delete all and re-insert (simple strategy for small dataset)
+    // ML anuncios
     await SB.from('anuncios').delete().eq('user_id',SB_USER.id);
     const rows=DATA.map(a=>({
       user_id:SB_USER.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
@@ -968,9 +992,21 @@ async function syncUp(silent=false){
       obs:a.obs||'',tag_full:!!(a.tags?.full),tag_oferta:!!(a.tags?.oferta),tag_pub:!!(a.tags?.pub)
     }));
     if(rows.length>0)await SB.from('anuncios').insert(rows);
-    if(!silent){setSyncStatus('connected');showCfgStatus('Dados enviados com sucesso!','ok')}
-    else setSyncStatus('connected');
-  }catch(e){setSyncStatus('error')}
+    // Shopee anuncios
+    // Shopee table (may not exist yet if schema not updated)
+    try{
+      await SB.from('anuncios_shopee').delete().eq('user_id',SB_USER.id);
+      const shRows=SH_DATA.map(a=>({
+      user_id:SB_USER.id,cod:a.cod||'',nome:a.nome||'',status:a.status||'ativo',
+      preco:a.preco||0,preco_d:a.precoD||0,custo:a.custo||0,
+      ant:a.ant||6,frete:a.frete||0,outros:a.outros||0,
+      desc_pct:a.descPct||5,desc_max:a.descMax||10,imp:a.imp||10,obs:a.obs||''
+    }));
+      if(shRows.length>0)await SB.from('anuncios_shopee').insert(shRows);
+    }catch(shErr){console.warn('Shopee table not found - run schema SQL:',shErr);}
+    setSyncStatus('connected');
+    if(!silent)showCfgStatus('Dados ML e Shopee sincronizados!','ok');
+  }catch(e){console.error('syncUp error:',e);setSyncStatus('error')}
 }
 
 async function desconectar(){
@@ -984,10 +1020,9 @@ async function desconectar(){
 
 // Override sv() to also sync after save
 const sv_orig=sv;
-function sv(){
-  sv_orig();
-  if(SB&&SB_USER)setTimeout(()=>syncUp(true),300);
-}
+function sv(){sv_orig();if(SB&&SB_USER)clearTimeout(sv._t),sv._t=setTimeout(()=>syncUp(true),800);}
+const svSH_orig=svSH;
+function svSH(){svSH_orig();if(SB&&SB_USER)clearTimeout(svSH._t),svSH._t=setTimeout(()=>syncUp(true),800);}
 
 // Override addH to also save hist to Supabase
 const addH_orig=addH;
@@ -1852,9 +1887,9 @@ function renderShopee(){
     ?lista.map(a=>{
       const ok=a.margem>=16;
       const stBadge=a.status==='ativo'?'<span class=\"badge b-ok\">Ativo</span>':a.status==='pausado'?'<span class=\"badge b-warn\">Pausado</span>':'<span class=\"badge b-nok\">Inativo</span>';
-      return`<tr>
-        <td style="font-family:var(--mono);font-size:11px;color:var(--t3);cursor:pointer" onclick="copiarCod('${a.cod}')" title="Copiar">${a.cod}</td>
-        <td style="font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis;cursor:pointer" onclick="openShopeeModal(${a.id})">${a.nome}</td>
+      return`<tr onclick="openShopeeModal(${a.id})" style="cursor:pointer">
+        <td style="font-family:var(--mono);font-size:11px;color:var(--t3)" onclick="event.stopPropagation();copiarCod('${a.cod}')" title="Copiar código">${a.cod}</td>
+        <td style="font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis">${a.nome}</td>
         <td>${stBadge}</td>
         <td>${fmt(a.preco)}</td>
         <td><input class="tbl-inp" type="number" value="${a.precoD>0?a.precoD:a.preco}" onchange="shInlineEdit(${a.id},'precoD',this.value)" onclick="event.stopPropagation()" style="width:80px"></td>
