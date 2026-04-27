@@ -821,53 +821,27 @@ function setSyncStatus(state){
   dot.style.background=s.c;lbl.textContent=s.t;
 }
 
-// FIXED credentials embedded - change if needed
 const SB_URL='https://ckqrahgkkzglqoptrvqg.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrcXJhaGdra3pnbHFvcHRydnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY4OTA0NDUsImV4cCI6MjA5MjQ2NjQ0NX0.zUmMQLRGa-wU2rHd9bJ7JVwL9-32awo1VgCatY8-Qr8';
-const SB_EMAIL='precify@app.local';
-const SB_PASS='Precify@2025!';
 
 async function initSupabase(){
   try{
     setSyncStatus('connecting');
     SB=window.supabase.createClient(SB_URL,SB_KEY);
-
-    // Try to get existing session first
-    const {data:{session}}=await SB.auth.getSession();
-    if(session?.user){
-      SB_USER=session.user;
-      setSyncStatus('connected');
-      updateCfgCard();
-      await syncDown();
+    // Test connection with a simple query (no auth needed with anon key)
+    const {error}=await SB.from('anuncios').select('id').limit(1);
+    if(error&&error.code!=='PGRST116'){
+      // PGRST116 = no rows found, that's OK
+      console.error('Supabase connection error:',error);
+      setSyncStatus('error');
+      SB=null;
       return;
     }
-
-    // Try sign in with fixed credentials
-    const {data:signIn,error:e1}=await SB.auth.signInWithPassword({email:SB_EMAIL,password:SB_PASS});
-    if(signIn?.user){
-      SB_USER=signIn.user;
-      setSyncStatus('connected');
-      updateCfgCard();
-      await syncDown();
-      return;
-    }
-
-    // If sign in fails, try sign up (first time)
-    const {data:signUp,error:e2}=await SB.auth.signUp({email:SB_EMAIL,password:SB_PASS});
-    if(signUp?.user){
-      SB_USER=signUp.user;
-      setSyncStatus('connected');
-      updateCfgCard();
-      await syncDown();
-      return;
-    }
-
-    // All failed
-    const errMsg=(e1||e2)?.message||'desconhecido';
-    console.error('Supabase auth error:',e1,e2);
-    setSyncStatus('error');
-    showCfgStatus('Erro de autenticação: '+errMsg,'error');
-    SB=null;
+    // Connected! Use a fixed user_id based on the anon key (no auth needed)
+    SB_USER={id:'00000000-0000-0000-0000-000000000001'};
+    setSyncStatus('connected');
+    updateCfgCard();
+    await syncDown();
   }catch(e){
     console.error('Supabase exception:',e);
     setSyncStatus('error');
@@ -881,7 +855,7 @@ function updateCfgCard(){
   if(!card||!info)return;
   if(SB&&SB_USER){
     card.style.display='';
-    info.innerHTML='<span style="color:var(--gr)">✓ Conectado ao Supabase</span> — '+DATA.length+' anúncios ML, '+SH_DATA.length+' anúncios Shopee sincronizados.';
+    info.innerHTML='<span style="color:var(--gr)">✓ Conectado ao Supabase</span> — '+DATA.length+' anúncios ML · '+SH_DATA.length+' Shopee sincronizados';
   } else {
     card.style.display='none';
   }
@@ -952,7 +926,9 @@ async function syncDown(){
       NID=999999;
     }
     // Shopee data
-    if(sh&&sh.length>0){
+    if(e2){
+      console.warn('Shopee table error (run supabase_schema.sql):',e2.message);
+    } else if(sh&&sh.length>0){
       SH_DATA=sh.map(a=>({
         id:a.id,cod:a.cod||'',nome:a.nome||'',status:a.status||'ativo',
         preco:+a.preco||0,precoD:+a.preco_d||0,custo:+a.custo||0,
@@ -960,14 +936,13 @@ async function syncDown(){
         descPct:+a.desc_pct||5,descMax:+a.desc_max||10,imp:+a.imp||10,obs:a.obs||''
       }));
       SH_NID=999999;
-    }
-    // First time? Push local data up
-    if((!an||an.length===0)&&(!sh||sh.length===0)){
-      await syncUp(true);
-    } else {
-      // Save to localStorage
-      localStorage.setItem(SK,JSON.stringify(DATA));
       localStorage.setItem(SK_SH,JSON.stringify(SH_DATA));
+    }
+    // First time ML? Push all local data up
+    if(!e1&&(!an||an.length===0)){
+      await syncUp(true);
+    } else if(!e1&&an){
+      localStorage.setItem(SK,JSON.stringify(DATA));
     }
     if(hi)HIST=hi.map(h=>({ts:new Date(h.created_at).toLocaleString('pt-BR'),msg:h.msg}));
     setSyncStatus('connected');
@@ -985,7 +960,7 @@ async function syncUp(silent=false){
     // ML anuncios
     await SB.from('anuncios').delete().eq('user_id',SB_USER.id);
     const rows=DATA.map(a=>({
-      user_id:SB_USER.id,cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
+      user_id:'00000000-0000-0000-0000-000000000001',cod:a.cod||'',nome:a.nome||'',tipo:a.tipo||'classico',
       preco:a.preco||0,preco_d:a.precoD||0,custo:a.custo||0,
       com:a.com||11.5,ant:a.ant||4.2,frete:a.frete||0,aj_ml:a.ajml||0,
       desc_pct:a.descPct||5,desc_max:a.descMax||10,imp:a.imp||10,
@@ -997,7 +972,7 @@ async function syncUp(silent=false){
     try{
       await SB.from('anuncios_shopee').delete().eq('user_id',SB_USER.id);
       const shRows=SH_DATA.map(a=>({
-      user_id:SB_USER.id,cod:a.cod||'',nome:a.nome||'',status:a.status||'ativo',
+      user_id:'00000000-0000-0000-0000-000000000001',cod:a.cod||'',nome:a.nome||'',status:a.status||'ativo',
       preco:a.preco||0,preco_d:a.precoD||0,custo:a.custo||0,
       ant:a.ant||6,frete:a.frete||0,outros:a.outros||0,
       desc_pct:a.descPct||5,desc_max:a.descMax||10,imp:a.imp||10,obs:a.obs||''
@@ -1029,7 +1004,7 @@ const addH_orig=addH;
 function addH(msg){
   addH_orig(msg);
   if(SB&&SB_USER){
-    SB.from('historico').insert({user_id:SB_USER.id,msg}).catch(()=>{});
+    SB.from('historico').insert({user_id:'00000000-0000-0000-0000-000000000001',msg}).catch(()=>{});
   }
 }
 
@@ -1164,34 +1139,62 @@ function renderAnuncios(){
 
   const tipoBadge=t=>t==='premium'?'<span class=\"badge b-prm\">Premium</span>':'<span class=\"badge b-cls\">Clássico</span>'
 
+  // Store list for click delegation
+  window._mlLista=lista;
   document.getElementById('tbl-body').innerHTML=lista.length
-    ?lista.map(a=>{
+    ?lista.map((a,i)=>{
       const ok=a.margem>=16;
       const tagsHtml=mkTags(a.tags);
-      return`<tr onclick="openModal(${a.id})" style="cursor:pointer">
+      return`<tr data-idx="${i}" class="ml-row" style="cursor:pointer">
         <td style="font-family:var(--mono);font-size:11px;color:var(--t3)">
-          <span title="Clique para copiar" style="cursor:pointer;text-decoration:underline dotted" onclick="event.stopPropagation();copiarCod('${a.cod}')">${a.cod}</span>
+          <span title="Clique para copiar" style="cursor:pointer;text-decoration:underline dotted" data-cod="${a.cod}" class="cod-copy">${a.cod}</span>
         </td>
         <td style="font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis">${a.nome}${tagsHtml?`<br><span style="display:inline-flex;gap:3px;margin-top:2px">${tagsHtml}</span>`:''}</td>
         <td>${tipoBadge(a.tipo||'classico')}</td>
-        <td onclick="event.stopPropagation()"><input class="tbl-inp" type="number" step=".01" value="${+(a.precoD>0?a.precoD:a.preco).toFixed(2)}" onchange="inlineEdit(${a.id},'precoD',this.value)" title="Preço c/ desc" style="width:82px"></td>
-        <td onclick="event.stopPropagation()"><input class="tbl-inp" type="number" step=".01" value="${+a.custo.toFixed(2)}" onchange="inlineEdit(${a.id},'custo',this.value)" title="Custo" style="width:72px"></td>
-        <td onclick="event.stopPropagation()"><input class="tbl-inp" type="number" step=".01" value="${+a.frete.toFixed(2)}" onchange="inlineEdit(${a.id},'frete',this.value)" title="Frete" style="width:70px"></td>
+        <td><input class="tbl-inp" type="number" step=".01" value="${+(a.precoD>0?a.precoD:a.preco).toFixed(2)}" data-idx="${i}" data-field="precoD" title="Preço c/ desc" style="width:82px"></td>
+        <td><input class="tbl-inp" type="number" step=".01" value="${+a.custo.toFixed(2)}" data-idx="${i}" data-field="custo" title="Custo" style="width:72px"></td>
+        <td><input class="tbl-inp" type="number" step=".01" value="${+a.frete.toFixed(2)}" data-idx="${i}" data-field="frete" title="Frete" style="width:70px"></td>
         <td style="color:var(--t2)">${fmt(a.desc)}</td>
         <td style="font-weight:500;color:${ok?'var(--gr)':'var(--rd)'}">${fmt(a.lucro)}</td>
         <td><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span>
           <div class="mbar"><div class="mbar-fill" style="width:${Math.min(a.margem*2,100)}%;background:${ok?'var(--gr)':'var(--rd)'}"></div></div>
         </td>
-        <td style="font-size:12px;color:var(--t2);max-width:120px">${a.obs?`<span style=\"font-style:italic\">${a.obs}</span>`:'—'}</td>
-        <td onclick="event.stopPropagation()"><button class="btn-sm" onclick="openModal(${a.id})">Editar</button></td>
+        <td style="font-size:12px;color:var(--t2);max-width:120px">${a.obs?`<span style="font-style:italic">${a.obs}</span>`:'—'}</td>
+        <td><button class="btn-sm edit-btn" data-idx="${i}">Editar</button></td>
       </tr>`
     }).join('')
     :`<tr><td colspan="11"><div class="empty">Nenhum resultado</div></td></tr>`
 
+  // Event delegation for table - handles UUID ids safely
+  const tbody=document.getElementById('tbl-body');
+  if(tbody._delegated){}else{
+    tbody._delegated=true;
+    tbody.addEventListener('click',function(e){
+      // Copy cod
+      const cop=e.target.closest('.cod-copy');
+      if(cop){e.stopPropagation();copiarCod(cop.dataset.cod);return;}
+      // Inline input - don't open modal
+      if(e.target.tagName==='INPUT')return;
+      // Edit button
+      const btn=e.target.closest('.edit-btn');
+      const row=e.target.closest('.ml-row');
+      if(!row)return;
+      const a=window._mlLista?.[+row.dataset.idx];
+      if(a)openModal(a.id);
+    });
+    tbody.addEventListener('change',function(e){
+      if(e.target.tagName!=='INPUT')return;
+      const idx=+e.target.dataset.idx;
+      const field=e.target.dataset.field;
+      const a=window._mlLista?.[idx];
+      if(a&&field)inlineEdit(a.id,field,e.target.value);
+    });
+  }
+
   document.getElementById('mob-cards').innerHTML=lista.length
     ?lista.map(a=>{
       const ok=a.margem>=16;
-      return`<div class="an-card" onclick="openModal(${a.id})">
+      return`<div class="an-card" data-id="${a.id}" onclick="openModal(this.dataset.id)">
         <div class="an-hdr"><div class="an-name">${a.nome}</div><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span></div>
         <div class="an-cod">${a.cod}</div>
         <div class="an-meta">${tipoBadge(a.tipo||'classico')}${mkTags(a.tags)}</div>
@@ -1220,7 +1223,7 @@ function setModalTipo(t){
 
 function openModal(id){
   editId=id||null
-  const a=id?DATA.find(x=>x.id===id):null
+  const a=id?DATA.find(x=>String(x.id)===String(id)):null
   document.getElementById('m-title').textContent=a?'Editar anúncio':'Novo anúncio'
   const bd=document.getElementById('btn-del');if(bd)bd.style.display=a?'':'none'
   mTipo=a?.tipo||'classico'
@@ -1276,7 +1279,7 @@ function calcLive(){
   // Show price suggestion in modal
   const sugEl=document.getElementById('m-sug');
   if(sugEl&&editId){
-    const a=DATA.find(x=>x.id===editId);
+    const a=DATA.find(x=>String(x.id)===String(editId));
     const sug=!ok&&a?calcSug({...a,...getForm()}):null;
     if(sug){
       sugEl.style.display='';
@@ -1315,7 +1318,7 @@ function deletar(){
 }
 
 function toggleTag(id,tag){
-  const a=DATA.find(x=>x.id===id);if(!a)return
+  const a=DATA.find(x=>String(x.id)===String(id));if(!a)return
   if(!a.tags)a.tags={full:false,oferta:false,pub:false}
   a.tags[tag]=!a.tags[tag];sv()
   addH(`Tag '${tag}' ${a.tags[tag]?'adicionada':'removida'}: ${a.nome}`)
@@ -1333,7 +1336,7 @@ function copiarCod(cod){
   navigator.clipboard.writeText(cod).catch(()=>{});
 }
 function inlineEdit(id,field,val){
-  const a=DATA.find(x=>x.id===id);if(!a)return;
+  const a=DATA.find(x=>String(x.id)===String(id));if(!a)return;
   const v=parseFloat(val)||0;
   if(a[field]===v)return;
   const old=a[field];a[field]=v;sv();
@@ -1348,13 +1351,13 @@ function aplicarSugModal(pv){
   calcLive();
 }
 function aplicarSug(id,pv){
-  const a=DATA.find(x=>x.id===id);if(!a)return
+  const a=DATA.find(x=>String(x.id)===String(id));if(!a)return
   const old=a.preco;a.preco=pv;a.precoD=0;sv()
   addH(`Preço sugerido aplicado: ${a.nome} — ${fmt(old)}→${fmt(pv)}`);renderAnuncios()
 }
 
 function remObs(id){
-  const a=DATA.find(x=>x.id===id);if(!a)return
+  const a=DATA.find(x=>String(x.id)===String(id));if(!a)return
   a.obs='';sv();renderAnuncios()
 }
 
@@ -1791,7 +1794,7 @@ function shGetForm(){
 
 function openShopeeModal(id){
   shEditId=id||null;
-  const a=id?SH_DATA.find(x=>x.id===id):null;
+  const a=id?SH_DATA.find(x=>String(x.id)===String(id)):null;
   document.getElementById('sh-m-title').textContent=a?'Editar anúncio Shopee':'Novo anúncio Shopee';
   const bd=document.getElementById('sh-btn-del');if(bd)bd.style.display=a?'':'none';
   const g=(f,v)=>{const el=document.getElementById(f);if(el)el.value=v??'';}
@@ -1813,7 +1816,7 @@ function salvarShopee(){
   const f=shGetForm();
   if(!f.nome.trim())return alert('Informe o nome do produto');
   if(shEditId){
-    const old=SH_DATA.find(a=>a.id===shEditId);
+    const old=SH_DATA.find(a=>String(a.id)===String(shEditId));
     const ch=Object.keys(f).filter(k=>String(old[k])!==String(f[k])).map(k=>`${k}:${old[k]}→${f[k]}`).join(', ');
     Object.assign(old,f);svSH();
     if(ch)addH(`[Shopee] Editado: ${f.nome} — ${ch}`);
@@ -1826,7 +1829,7 @@ function salvarShopee(){
 
 function deletarShopee(){
   if(!shEditId)return;
-  const a=SH_DATA.find(x=>x.id===shEditId);
+  const a=SH_DATA.find(x=>String(x.id)===String(shEditId));
   if(!confirm(`Remover "${a?.nome}" da Shopee?`))return;
   SH_DATA=SH_DATA.filter(x=>x.id!==shEditId);svSH();
   addH(`[Shopee] Removido: ${a?.nome}`);
@@ -1834,7 +1837,7 @@ function deletarShopee(){
 }
 
 function shInlineEdit(id,field,val){
-  const a=SH_DATA.find(x=>x.id===id);if(!a)return;
+  const a=SH_DATA.find(x=>String(x.id)===String(id));if(!a)return;
   const v=parseFloat(val)||0;
   if(a[field]===v)return;
   const old=a[field];a[field]=v;svSH();
@@ -1883,31 +1886,54 @@ function renderShopee(){
     return true;
   });
 
+    window._shLista=lista;
   document.getElementById('sh-tbl-body').innerHTML=lista.length
-    ?lista.map(a=>{
+    ?lista.map((a,i)=>{
       const ok=a.margem>=16;
       const stBadge=a.status==='ativo'?'<span class=\"badge b-ok\">Ativo</span>':a.status==='pausado'?'<span class=\"badge b-warn\">Pausado</span>':'<span class=\"badge b-nok\">Inativo</span>';
-      return`<tr onclick="openShopeeModal(${a.id})" style="cursor:pointer">
-        <td style="font-family:var(--mono);font-size:11px;color:var(--t3)" onclick="event.stopPropagation();copiarCod('${a.cod}')" title="Copiar código">${a.cod}</td>
+      return`<tr data-idx="${i}" class="sh-row" style="cursor:pointer">
+        <td style="font-family:var(--mono);font-size:11px;color:var(--t3)" data-cod="${a.cod}" class="cod-copy" title="Copiar">${a.cod}</td>
         <td style="font-weight:500;max-width:150px;overflow:hidden;text-overflow:ellipsis">${a.nome}</td>
         <td>${stBadge}</td>
         <td>${fmt(a.preco)}</td>
-        <td><input class="tbl-inp" type="number" value="${a.precoD>0?a.precoD:a.preco}" onchange="shInlineEdit(${a.id},'precoD',this.value)" onclick="event.stopPropagation()" style="width:80px"></td>
-        <td><input class="tbl-inp" type="number" value="${a.custo}" onchange="shInlineEdit(${a.id},'custo',this.value)" onclick="event.stopPropagation()" style="width:72px"></td>
-        <td style="color:var(--t2)" title="Taxa Shopee (comissão + antec + camp)">${fmt(a.taxa)}</td>
-        <td><input class="tbl-inp" type="number" value="${a.frete}" onchange="shInlineEdit(${a.id},'frete',this.value)" onclick="event.stopPropagation()" style="width:65px"></td>
+        <td><input class="tbl-inp" type="number" value="${+(a.precoD>0?a.precoD:a.preco).toFixed(2)}" data-idx="${i}" data-field="precoD" style="width:80px"></td>
+        <td><input class="tbl-inp" type="number" value="${+a.custo.toFixed(2)}" data-idx="${i}" data-field="custo" style="width:72px"></td>
+        <td style="color:var(--t2)" title="Taxa Shopee escalonada">${fmt(a.taxa)}</td>
+        <td><input class="tbl-inp" type="number" value="${+a.frete.toFixed(2)}" data-idx="${i}" data-field="frete" style="width:65px"></td>
         <td style="color:var(--t2)">${fmt(a.desc)}</td>
         <td style="font-weight:500;color:${ok?'var(--gr)':'var(--rd)'}">${fmt(a.lucro)}</td>
         <td><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span><div class="mbar"><div class="mbar-fill" style="width:${Math.min(a.margem*2,100)}%;background:${ok?'var(--gr)':'var(--rd)'}"></div></div></td>
         <td style="font-size:12px;color:var(--t2);max-width:120px">${a.obs||'—'}</td>
-        <td><button class="btn-sm" onclick="openShopeeModal(${a.id})">Editar</button></td>
+        <td><button class="btn-sm sh-edit-btn" data-idx="${i}">Editar</button></td>
       </tr>`;
     }).join('')
     :`<tr><td colspan="13"><div class="empty">Nenhum resultado</div></td></tr>`;
 
+  // Event delegation for Shopee table
+  const sbtb=document.getElementById('sh-tbl-body');
+  if(!sbtb._delegated){
+    sbtb._delegated=true;
+    sbtb.addEventListener('click',function(e){
+      if(e.target.tagName==='INPUT')return;
+      const cop=e.target.closest('.cod-copy');
+      if(cop){e.stopPropagation();copiarCod(cop.dataset.cod);return;}
+      const row=e.target.closest('.sh-row');
+      if(!row)return;
+      const a=window._shLista?.[+row.dataset.idx];
+      if(a)openShopeeModal(a.id);
+    });
+    sbtb.addEventListener('change',function(e){
+      if(e.target.tagName!=='INPUT')return;
+      const idx=+e.target.dataset.idx;
+      const field=e.target.dataset.field;
+      const a=window._shLista?.[idx];
+      if(a&&field)shInlineEdit(a.id,field,e.target.value);
+    });
+  }
+
   document.getElementById('sh-mob-cards').innerHTML=lista.map(a=>{
     const ok=a.margem>=16;
-    return`<div class="an-card" onclick="openShopeeModal(${a.id})">
+    return`<div class="an-card" data-id="${a.id}" onclick="openShopeeModal(this.dataset.id)">
       <div class="an-hdr"><div class="an-name">${a.nome}</div><span class="badge ${ok?'b-ok':'b-nok'}">${a.margem.toFixed(1)}%</span></div>
       <div class="an-cod">${a.cod}</div>
       <div class="an-stats">
