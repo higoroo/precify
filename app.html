@@ -41,6 +41,7 @@
   --am:#f59e0b;
   --ml:#ffe066;
   --sh:#f97316;
+  --se:#9ca3af;
   --font:'Plus Jakarta Sans','Inter',-apple-system,sans-serif;
   --mono:'JetBrains Mono','Fira Code',monospace;
   --rs:10px;
@@ -279,6 +280,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .ins-icon.gr{background:rgba(34,197,94,.12);color:var(--gr)}
 .ins-icon.ml{background:rgba(245,158,11,.12);color:#f59e0b}
 .ins-icon.sh{background:rgba(249,115,22,.12);color:#f97316}
+.ins-icon.se{background:rgba(156,163,175,.14);color:#cbd5e1}
 
 /* ── PRIVACY MODE ── */
 .prv{transition:filter .2s var(--ease),opacity .2s var(--ease);border-radius:4px}
@@ -369,6 +371,7 @@ tr.locked-row:hover,.an-card.locked-row:hover{background:rgba(130,87,245,.06)}
 .sim-badge.ml{background:rgba(255,224,102,.12);color:#ffe066;border:1px solid rgba(255,224,102,.3)}
 .sim-badge.sh{background:rgba(249,115,22,.12);color:#f97316;border:1px solid rgba(249,115,22,.3)}
 .sim-badge.im{background:rgba(34,197,94,.12);color:var(--gr);border:1px solid rgba(34,197,94,.3)}
+.sim-badge.se{background:rgba(156,163,175,.14);color:#cbd5e1;border:1px solid rgba(156,163,175,.3)}
 .sim-card-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--t2)}
 .sim-card-meta b{color:var(--t);font-weight:600}
 .sim-card-actions{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd)}
@@ -870,6 +873,12 @@ select.tbl-inp{cursor:pointer}
             <button class="btn btn-sm" onclick="openAddChannel()" style="margin-top:10px">+ Novo canal</button>
           </div>
 
+          <div class="card" id="import-batches-card" style="display:none">
+            <div class="card-title">Importações recentes</div>
+            <div style="font-size:12px;color:var(--t3);margin-bottom:12px">Desfaça uma importação que entrou no canal errado. Remove só os anúncios que aquela importação criou.</div>
+            <div id="import-batches-list"></div>
+          </div>
+
           <div class="card" style="border-color:rgba(130,87,245,.3);background:rgba(130,87,245,.04)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
               <div style="width:36px;height:36px;border-radius:10px;background:var(--pu-grad);display:flex;align-items:center;justify-content:center;flex-shrink:0">
@@ -976,6 +985,7 @@ select.tbl-inp{cursor:pointer}
       <select id="ch-f-type" class="tbl-inp" style="padding:9px 12px">
         <option value="ml">Mercado Livre</option>
         <option value="shopee">Shopee</option>
+        <option value="shein">Shein</option>
       </select>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
@@ -1136,6 +1146,51 @@ select.tbl-inp{cursor:pointer}
       </div>
     </div>
 
+    <!-- SHEIN FIELDS -->
+    <div id="lf-shein-fields">
+      <div class="fg1" style="margin-bottom:10px">
+        <div class="field"><label>Status</label>
+          <select id="lf-shein-status" class="tbl-inp" style="padding:9px 12px">
+            <option value="ativo">Ativo</option>
+            <option value="pausado">Pausado</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
+      </div>
+      <div class="adv-toggle" id="lf-shein-adv-toggle" onclick="toggleAdvanced('shein')">
+        <span>Configurações avançadas</span>
+        <svg class="adv-chev" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="adv-body" id="lf-shein-adv-body">
+        <div class="fg3" style="margin-bottom:10px">
+          <div class="field"><label>Comissão (%)</label><input type="number" id="lf-shein-com" step=".1" oninput="listingCalcLive()"></div>
+          <div class="field"><label>Cupom (%)</label><input type="number" id="lf-shein-descpct" step=".1" oninput="listingCalcLive()"></div>
+          <div class="field"><label>Cupom máx (R$)</label><input type="number" id="lf-shein-descmax" step=".01" oninput="listingCalcLive()"></div>
+        </div>
+        <div class="fg1" style="margin-bottom:10px">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:1"><label>Intermediação de frete (R$)</label><input type="number" id="lf-shein-frete" step=".01" oninput="listingCalcLive()"></div>
+            <button type="button" class="btn btn-sm" onclick="toggleSheinCub()" style="white-space:nowrap;height:38px">Estimar ▾</button>
+          </div>
+          <div id="lf-shein-cub" style="display:none;margin-top:10px;padding:12px;background:var(--sur2);border:1px dashed var(--bd2);border-radius:var(--rs)">
+            <div class="fg3" style="margin-bottom:8px">
+              <div class="field"><label>Compr. (cm)</label><input type="number" id="lf-shein-cub-c" step="1" oninput="calcSheinCub()"></div>
+              <div class="field"><label>Larg. (cm)</label><input type="number" id="lf-shein-cub-l" step="1" oninput="calcSheinCub()"></div>
+              <div class="field"><label>Alt. (cm)</label><input type="number" id="lf-shein-cub-a" step="1" oninput="calcSheinCub()"></div>
+            </div>
+            <div id="lf-shein-cub-res" style="display:none;font-size:12.5px;color:var(--t2);display:flex;justify-content:space-between;align-items:center;gap:8px">
+              <span>Cubado: <b id="lf-shein-cub-peso" style="font-family:var(--mono);color:var(--pu)">—</b></span>
+              <button type="button" class="btn btn-sm" onclick="aplicarSheinCub()">Usar R$ <span id="lf-shein-cub-val">—</span></button>
+            </div>
+            <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Estimativa por peso cubado sobre pontos reais. Sempre confirme com o repasse.</div>
+          </div>
+        </div>
+        <div class="fg1" style="margin-bottom:10px">
+          <div class="field"><label>Imposto (%)</label><input type="number" id="lf-shein-imp" step=".1" oninput="listingCalcLive()"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- TAGS + OBS -->
     <div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tags</div>
@@ -1161,7 +1216,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 // STATE
 // ══════════════════════════════════════════════
 let SB=null, USER=null, PROFILE=null;
-let CHANNELS=[], LISTINGS=[], PRODUTOS=[];
+let CHANNELS=[], LISTINGS=[], PRODUTOS=[], IMPORT_BATCHES=[];
 
 // ══════════════════════════════════════════════
 // PLANO / LIMITES
@@ -1293,6 +1348,15 @@ function copyCod(cod){navigator.clipboard.writeText(String(cod)).catch(()=>{});}
 // ══════════════════════════════════════════════
 // FORMULAS
 // ══════════════════════════════════════════════
+// ── Helpers de canal (cor / nome / ícone) — centraliza pra não repetir if por todo lado ──
+const ICO_ML_PATH='<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>';
+const ICO_SH_PATH='<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>';
+const ICO_SE_PATH='<path d="M6 2h12l4 6-10 13L2 8z"/><path d="M2 8h20"/><path d="M12 2 8 8l4 13 4-13z"/>';
+function chColor(t){return t==='ml'?'#f59e0b':t==='shopee'?'#f97316':t==='shein'?'#9ca3af':'#f59e0b';}
+function chName(t){return t==='ml'?'Mercado Livre':t==='shopee'?'Shopee':t==='shein'?'Shein':'—';}
+function chIcoPath(t){return t==='ml'?ICO_ML_PATH:t==='shopee'?ICO_SH_PATH:t==='shein'?ICO_SE_PATH:ICO_ML_PATH;}
+function chIcoCls(t){return t==='ml'?'ml':t==='shopee'?'sh':t==='shein'?'se':'ml';}
+
 function calcML(a){
   const pv=a.preco_d>0?a.preco_d:a.preco;
   const comPct=a.com||11.5;
@@ -1340,8 +1404,28 @@ function calcSH(a){
 }
 
 
+function calcShein(a){
+  const pv=a.preco_d>0?a.preco_d:a.preco;
+  const comPct=a.com||18;
+  const impPct=a.imp||10;
+  const frete=a.frete||0;
+  const custo=a.custo||0;
+  const descPct=a.desc_pct??5;
+  const descMax=a.desc_max??10;
+  const desconto=Math.min(pv*(descPct/100),descMax);   // cupom
+  const comissao=(pv-desconto)*(comPct/100);            // comissão sobre preço já c/ cupom abatido
+  const imposto=pv*(impPct/100);
+  const valorPlataforma=pv-comissao-frete-desconto;     // = "Receita estimada do pedido" da Shein
+  const liquido=valorPlataforma-imposto;
+  const lucro=liquido-custo;
+  const margem=pv>0?lucro/pv*100:0;
+  return{pv,comissao,comPct,frete,ajml:0,outros:0,desconto,descPct,descMax,valorPlataforma,antecip:0,antPct:0,imposto,impPct,liquido,custo,lucro,margem};
+}
+
 function calcListing(a,chType){
-  return chType==='shopee'?calcSH(a):calcML(a);
+  if(chType==='shopee')return calcSH(a);
+  if(chType==='shein')return calcShein(a);
+  return calcML(a);
 }
 
 // ══════════════════════════════════════════════
@@ -1391,7 +1475,7 @@ async function doLogout(){
   if(_loggingOut)return;
   _loggingOut=true;
   await SB.auth.signOut();
-  USER=null;PROFILE=null;CHANNELS=[];LISTINGS=[];PRODUTOS=[];
+  USER=null;PROFILE=null;CHANNELS=[];LISTINGS=[];PRODUTOS=[];IMPORT_BATCHES=[];
   _simCache=null;
   document.getElementById('app').classList.remove('ready');
   document.getElementById('auth-screen').style.display='flex';
@@ -1440,6 +1524,11 @@ async function loadAll(){
     const {data:prof,error:e4}=await SB.from('profiles').select('*').eq('id',USER.id).single();
     if(e4)throw Object.assign(new Error(e4.message||'profile error'), {step:'profile', detail:e4});
     PROFILE=prof;
+
+    // Load import batches (tolera tabela ainda não criada) — só os ativos importam pro desfazer
+    const {data:batches,error:e5}=await SB.from('import_batches').select('*').eq('status','active').order('created_at',{ascending:false});
+    IMPORT_BATCHES=e5?[]:(batches||[]);
+    if(e5)console.warn('import_batches indisponível:',e5.message);
 
     const insBadge=document.getElementById('ni-insights-badge');
     if(insBadge)insBadge.style.display=isPro()?'none':'';
@@ -1522,7 +1611,7 @@ function renderSidebar(){
   }
 
   const mkItem=(ch,isDrawer)=>{
-    const color=ch.type==='ml'?'#f59e0b':'#f97316';
+    const color=chColor(ch.type);
     const icon=ch.type==='ml'
       ?'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>'
       :'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>';
@@ -1672,7 +1761,7 @@ function renderDash(){
   if(chDiv)chDiv.innerHTML=CHANNELS.map(ch=>{
     const chL=all.filter(a=>a.channel_id===ch.id);
     const chAvg=chL.length?chL.reduce((s,a)=>s+a.margem,0)/chL.length:0;
-    const color=ch.type==='ml'?'#f59e0b':'#f97316';
+    const color=chColor(ch.type);
     return`<div class="ri" onclick="goChannel('${ch.id}')">
       <div style="min-width:0;flex:1">
         <div class="ri-name">${sanitize(ch.name)}</div>
@@ -1793,12 +1882,14 @@ async function renderChannel(){
   // Desktop table
   const thead=document.getElementById('ch-thead');
   const tbody=document.getElementById('ch-tbody');
+  const showTipo=ch.type==='ml';                        // Clássico/Premium é só ML
+  const showFrete=ch.type==='ml'||ch.type==='shein';    // ML e Shein têm frete relevante
   if(thead){
-    if(ch.type==='ml'){
-      thead.innerHTML='<tr><th>Código</th><th>Produto</th><th>Tipo</th><th>Preço</th><th>Custo</th><th>Frete</th><th>Lucro</th><th>Margem</th><th></th></tr>';
-    } else {
-      thead.innerHTML='<tr><th>Código</th><th>Produto</th><th>Preço</th><th>Custo</th><th>Lucro</th><th>Margem</th><th></th></tr>';
-    }
+    thead.innerHTML='<tr><th>Código</th><th>Produto</th>'
+      +(showTipo?'<th>Tipo</th>':'')
+      +'<th>Preço</th><th>Custo</th>'
+      +(showFrete?'<th>Frete</th>':'')
+      +'<th>Lucro</th><th>Margem</th><th></th></tr>';
   }
   if(tbody){
     if(!listings.length){
@@ -1814,10 +1905,10 @@ async function renderChannel(){
         return`<tr onclick="${rowClick}" class="${rowClass}">
           <td style="font-family:var(--mono);font-size:11px;color:var(--t3)" class="cod-cell" data-cod="${l.cod}" title="Copiar" onclick="event.stopPropagation();${l._locked?'':`copyCod('${l.cod}')`}" style="cursor:pointer;text-decoration:underline dotted">${l.cod}</td>
           <td style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sanitize(l.nome)}${tags?'<br><span style="display:inline-flex;gap:2px;margin-top:2px">'+tags+'</span>':''}</td>
-          ${ch.type==='ml'?`<td>${tipoBadge}</td>`:''}
+          ${showTipo?`<td>${tipoBadge}</td>`:''}
           <td style="font-family:var(--mono)"><span class="${l._locked?'locked-val':'prv'}">${l._locked?'R$\u00a0••••':fmt(l.precoD>0?l.precoD:l.preco)}</span></td>
           <td style="font-family:var(--mono)"><span class="${l._locked?'locked-val':'prv'}">${l._locked?'R$\u00a0••••':fmt(l.custo)}</span></td>
-          ${ch.type==='ml'?`<td style="font-family:var(--mono)"><span class="${l._locked?'locked-val':'prv'}">${l._locked?'R$\u00a0••••':fmt(l.frete)}</span></td>`:''}
+          ${showFrete?`<td style="font-family:var(--mono)"><span class="${l._locked?'locked-val':'prv'}">${l._locked?'R$\u00a0••••':fmt(l.frete)}</span></td>`:''}
           <td style="font-weight:500;color:${l._locked?'var(--t3)':(l.lucro>=0?'var(--gr)':'var(--rd)')};font-family:var(--mono)"><span class="${l._locked?'locked-val':'prv'}">${l._locked?'R$\u00a0••••':fmt(l.lucro)}</span></td>
           <td>${l._locked?lockBadge:l._inactive?inactiveBadge:`<span class="badge ${l.margem>=16?'b-ok':'b-nok'} prv">${l.margem.toFixed(1)}%</span>`}</td>
           <td>${l._locked||l._inactive?'':`<button class="btn btn-sm" onclick="event.stopPropagation();openListing('${l.id}')">Editar</button>`}${l._inactive?`<button class="btn btn-sm" onclick="event.stopPropagation();openListing('${l.id}')">Ver</button>`:''}</td>
@@ -2099,8 +2190,8 @@ function renderInsights(){
   const chDiv=document.getElementById('ins-canais');
   if(chDiv)chDiv.innerHTML=`<div class="card-title">Por canal</div>`+CHANNELS.map(ch=>{
     const chL=all.filter(a=>a.channel_id===ch.id);
-    const icoCls=ch.type==='ml'?'ml':'sh';
-    const icoPath=ch.type==='ml'?ICO_ML:ICO_SH;
+    const icoCls=chIcoCls(ch.type);
+    const icoPath=chIcoPath(ch.type);
     if(!chL.length)return`<div class="ri" style="cursor:default">
       <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1">
         <div class="ins-icon ${icoCls}"><svg viewBox="0 0 24 24">${icoPath}</svg></div>
@@ -2208,9 +2299,11 @@ function openListing(id){
   const ch=CHANNELS.find(c=>c.id===_activeCh);
   if(!ch)return;
 
-  const isML=ch.type==='ml';
-  document.getElementById('lf-ml-fields').style.display=isML?'':'none';
-  document.getElementById('lf-sh-fields').style.display=isML?'none':'';
+  const chType=ch.type;                 // 'ml' | 'shopee' | 'shein'
+  const advKey=chType==='ml'?'ml':chType==='shopee'?'sh':'shein';   // sufixo dos ids dos blocos
+  document.getElementById('lf-ml-fields').style.display=chType==='ml'?'':'none';
+  document.getElementById('lf-sh-fields').style.display=chType==='shopee'?'':'none';
+  document.getElementById('lf-shein-fields').style.display=chType==='shein'?'':'none';
   document.getElementById('modal-listing-title').textContent=id?'Editar anúncio':'Novo anúncio';
   document.getElementById('btn-del-listing').style.display=id?'':'none';
   document.getElementById('listing-result').style.display='none';
@@ -2222,30 +2315,33 @@ function openListing(id){
     if(!l)return;
     g('lf-nome',l.nome);g('lf-cod',l.cod);
     g('lf-preco',l.preco);g('lf-precoD',l.preco_d);g('lf-custo',l.custo);
-    if(isML){
+    if(chType==='ml'){
       g('lf-com',l.com||11.5);g('lf-ant',l.ant||4.2);g('lf-ajml',l.aj_ml||0);
       g('lf-frete',l.frete||0);g('lf-descpct',l.desc_pct??5);g('lf-descmax',l.desc_max??10);g('lf-imp',l.imp||10);
       g('lf-tipo',l.tipo||'classico');g('lf-status',l.status||'ativo');
-    } else {
+    } else if(chType==='shopee'){
       g('lf-sh-ant',l.ant||2.5);g('lf-sh-frete',l.frete||0);g('lf-sh-outros',l.outros||0);
       g('lf-sh-descpct',l.desc_pct??5);g('lf-sh-descmax',l.desc_max??10);g('lf-sh-imp',l.imp||10);g('lf-sh-status',l.status||'ativo');
+    } else { // shein
+      g('lf-shein-com',l.com||18);g('lf-shein-frete',l.frete||0);
+      g('lf-shein-descpct',l.desc_pct??5);g('lf-shein-descmax',l.desc_max??10);g('lf-shein-imp',l.imp||10);g('lf-shein-status',l.status||'ativo');
     }
     renderTagBtns({full:l.tag_full,oferta:l.tag_oferta,pub:l.tag_pub});
     populateProdutoDropdown(l.produto_id||'');
     // Editando: abre bloco avançado automaticamente pra mostrar valores preenchidos
     setTimeout(()=>{
-      const ch=isML?'ml':'sh';
-      document.getElementById(`lf-${ch}-adv-body`)?.classList.add('open');
-      document.getElementById(`lf-${ch}-adv-toggle`)?.classList.add('open');
+      document.getElementById(`lf-${advKey}-adv-body`)?.classList.add('open');
+      document.getElementById(`lf-${advKey}-adv-toggle`)?.classList.add('open');
     },50);
   } else {
     g('lf-nome','');g('lf-cod','');g('lf-preco','');g('lf-precoD','');g('lf-custo','');
-    if(isML){g('lf-com',11.5);g('lf-ant',4.2);g('lf-ajml',0);g('lf-frete',0);g('lf-descpct',5);g('lf-descmax',10);g('lf-imp',10);g('lf-tipo','classico');g('lf-status','ativo');}
-    else{g('lf-sh-ant',2.5);g('lf-sh-frete',0);g('lf-sh-outros',0);g('lf-sh-descpct',5);g('lf-sh-descmax',10);g('lf-sh-imp',10);g('lf-sh-status','ativo');}
+    if(chType==='ml'){g('lf-com',11.5);g('lf-ant',4.2);g('lf-ajml',0);g('lf-frete',0);g('lf-descpct',5);g('lf-descmax',10);g('lf-imp',10);g('lf-tipo','classico');g('lf-status','ativo');}
+    else if(chType==='shopee'){g('lf-sh-ant',2.5);g('lf-sh-frete',0);g('lf-sh-outros',0);g('lf-sh-descpct',5);g('lf-sh-descmax',10);g('lf-sh-imp',10);g('lf-sh-status','ativo');}
+    else{g('lf-shein-com',18);g('lf-shein-frete',0);g('lf-shein-descpct',5);g('lf-shein-descmax',10);g('lf-shein-imp',10);g('lf-shein-status','ativo');}
     renderTagBtns({full:false,oferta:false,pub:false});
     populateProdutoDropdown('');
     // Novo anúncio: fecha bloco avançado
-    ['ml','sh'].forEach(c=>{
+    ['ml','sh','shein'].forEach(c=>{
       document.getElementById(`lf-${c}-adv-body`)?.classList.remove('open');
       document.getElementById(`lf-${c}-adv-toggle`)?.classList.remove('open');
     });
@@ -2282,32 +2378,30 @@ function getTagsFromBtns(){
 
 function getListingForm(){
   const ch=CHANNELS.find(c=>c.id===_activeCh);
-  const isML=ch?.type==='ml';
+  const chType=ch?.type;
   const tags=getTagsFromBtns();
   const produtoId=document.getElementById('lf-produto')?.value||null;
-  if(isML){
-    return{
-      channel_id:_activeCh,user_id:USER.id,
-      nome:s('lf-nome'),cod:s('lf-cod'),status:s('lf-status'),
-      preco:n('lf-preco'),preco_d:n('lf-precoD'),custo:n('lf-custo'),
+  const base={
+    channel_id:_activeCh,user_id:USER.id,
+    nome:s('lf-nome'),cod:s('lf-cod'),
+    preco:n('lf-preco'),preco_d:n('lf-precoD'),custo:n('lf-custo'),
+    obs:s('lf-obs'),produto_id:produtoId||null,
+    tag_full:tags.full,tag_oferta:tags.oferta,tag_pub:tags.pub,
+    updated_at:new Date().toISOString()
+  };
+  if(chType==='ml'){
+    return{...base,status:s('lf-status'),
       com:n('lf-com'),ant:n('lf-ant'),aj_ml:n('lf-ajml'),
       frete:n('lf-frete'),desc_pct:n('lf-descpct'),desc_max:n('lf-descmax'),imp:n('lf-imp'),
-      tipo:s('lf-tipo'),obs:s('lf-obs'),
-      produto_id:produtoId||null,
-      tag_full:tags.full,tag_oferta:tags.oferta,tag_pub:tags.pub,
-      updated_at:new Date().toISOString()
-    };
-  } else {
-    return{
-      channel_id:_activeCh,user_id:USER.id,
-      nome:s('lf-nome'),cod:s('lf-cod'),status:s('lf-sh-status'),
-      preco:n('lf-preco'),preco_d:n('lf-precoD'),custo:n('lf-custo'),
+      tipo:s('lf-tipo')};
+  } else if(chType==='shopee'){
+    return{...base,status:s('lf-sh-status'),
       ant:n('lf-sh-ant'),frete:n('lf-sh-frete'),outros:n('lf-sh-outros'),
-      desc_pct:n('lf-sh-descpct'),desc_max:n('lf-sh-descmax'),imp:n('lf-sh-imp'),obs:s('lf-obs'),
-      produto_id:produtoId||null,
-      tag_full:tags.full,tag_oferta:tags.oferta,tag_pub:tags.pub,
-      updated_at:new Date().toISOString()
-    };
+      desc_pct:n('lf-sh-descpct'),desc_max:n('lf-sh-descmax'),imp:n('lf-sh-imp')};
+  } else { // shein
+    return{...base,status:s('lf-shein-status'),
+      com:n('lf-shein-com'),frete:n('lf-shein-frete'),
+      desc_pct:n('lf-shein-descpct'),desc_max:n('lf-shein-descmax'),imp:n('lf-shein-imp')};
   }
 }
 
@@ -2465,15 +2559,31 @@ function listingCalcLive(){
     <div><div class="rbox-label">Margem</div><div class="rbox-val prv" style="color:${ok?'var(--gr)':'var(--rd)'}">${r.margem.toFixed(1)}%</div><div class="mbar"><div class="mbar-fill" id="listing-mbar-fill" style="width:0%;background:${ok?'var(--gr)':'var(--rd)'}"></div></div></div>`;
   const mbarFill=document.getElementById('listing-mbar-fill');
   if(mbarFill)requestAnimationFrame(()=>requestAnimationFrame(()=>{mbarFill.style.width=Math.min(Math.max(r.margem*2,0),100)+'%';}));
-  renderBreakdownDetail(r,ch.type==='ml');
+  renderBreakdownDetail(r,ch.type);
 }
 
-// Detalhamento em R$ — espelha o que o ML/Shopee mostram no pedido,
+// Detalhamento em R$ — espelha o que a plataforma mostra no pedido,
 // pra você comparar "Valor que a plataforma paga" com o print real.
-function renderBreakdownDetail(r,isML){
+function renderBreakdownDetail(r,chType){
   const div=document.getElementById('listing-breakdown');
   if(!div)return;
+  const isML=chType==='ml', isSH=chType==='shopee', isShein=chType==='shein';
   let rows=`<div class="bd-row"><span class="l">Preço de venda</span><span class="v">${fmt(r.pv)}</span></div>`;
+
+  if(isShein){
+    // Shein: cupom abate antes; comissão sobre (preço − cupom); sem antecipação.
+    if(r.desconto)rows+=`<div class="bd-row"><span class="l">Cupom (${r.descPct}%, máx ${fmt(r.descMax)})</span><span class="v bd-neg">−${fmt(r.desconto)}</span></div>`;
+    rows+=`<div class="bd-row"><span class="l">Comissão (${r.comPct}%)</span><span class="v bd-neg">−${fmt(r.comissao)}</span></div>`;
+    if(r.frete)rows+=`<div class="bd-row"><span class="l">Intermediação de frete</span><span class="v bd-neg">−${fmt(r.frete)}</span></div>`;
+    rows+=`<div class="bd-row bd-total"><span class="l">Receita estimada do pedido</span><span class="v">${fmt(r.valorPlataforma)}</span></div>`;
+    rows+=`<div class="bd-row"><span class="l">Imposto (${r.impPct}%)</span><span class="v bd-neg">−${fmt(r.imposto)}</span></div>`;
+    rows+=`<div class="bd-row bd-total"><span class="l">Líquido total</span><span class="v">${fmt(r.liquido)}</span></div>`;
+    rows+=`<div class="bd-row"><span class="l">Custo do produto</span><span class="v bd-neg">−${fmt(r.custo)}</span></div>`;
+    rows+=`<div class="bd-row bd-total"><span class="l">Lucro</span><span class="v" style="color:${r.lucro>=0?'var(--gr)':'var(--rd)'}">${fmt(r.lucro)}</span></div>`;
+    div.innerHTML=rows;
+    return;
+  }
+
   if(isML){
     rows+=`<div class="bd-row"><span class="l">Comissão (${r.comPct}%)</span><span class="v bd-neg">−${fmt(r.comissao)}</span></div>`;
   }else{
@@ -2502,6 +2612,34 @@ function toggleAdvanced(ch){
   if(!toggle||!body)return;
   const open=body.classList.toggle('open');
   toggle.classList.toggle('open',open);
+}
+
+// ── Estimador de frete Shein por peso cubado ──
+// Reta linear entre 2 pontos reais conhecidos: 70×45×45→R$106 e 15×15×15→R$4.
+// Cada repasse novo (dimensão+frete) refina esses pontos no futuro.
+const SHEIN_CUB=[{cub:(70*45*45)/6000,frete:106},{cub:(15*15*15)/6000,frete:4}];
+const SHEIN_A=(SHEIN_CUB[0].frete-SHEIN_CUB[1].frete)/(SHEIN_CUB[0].cub-SHEIN_CUB[1].cub);
+const SHEIN_B=SHEIN_CUB[0].frete-SHEIN_A*SHEIN_CUB[0].cub;
+function toggleSheinCub(){
+  const p=document.getElementById('lf-shein-cub');
+  if(p)p.style.display=p.style.display==='none'?'block':'none';
+}
+function calcSheinCub(){
+  const c=n('lf-shein-cub-c'),l=n('lf-shein-cub-l'),a=n('lf-shein-cub-a');
+  const res=document.getElementById('lf-shein-cub-res');
+  if(!res)return;
+  if(c<=0||l<=0||a<=0){res.style.display='none';return;}
+  const cub=(c*l*a)/6000;
+  let est=SHEIN_A*cub+SHEIN_B;
+  if(est<4)est=4;
+  document.getElementById('lf-shein-cub-peso').textContent=cub.toFixed(2).replace('.',',')+' kg';
+  document.getElementById('lf-shein-cub-val').textContent=est.toFixed(2).replace('.',',');
+  res.style.display='flex';
+  res.dataset.val=est.toFixed(2);
+}
+function aplicarSheinCub(){
+  const v=document.getElementById('lf-shein-cub-res').dataset.val;
+  if(v){document.getElementById('lf-shein-frete').value=v;listingCalcLive();}
 }
 function toggleBreakdown(){
   const det=document.getElementById('listing-breakdown');
@@ -2587,8 +2725,62 @@ async function renderUpsellCard(){
   }
 }
 
+// ── Importações recentes (desfazer) ──
+function renderImportBatches(){
+  const card=document.getElementById('import-batches-card');
+  const list=document.getElementById('import-batches-list');
+  if(!card||!list)return;
+  const batches=(IMPORT_BATCHES||[]).filter(b=>b.status==='active'&&(b.created_count||0)>0);
+  if(!batches.length){card.style.display='none';return;}
+  card.style.display='';
+  list.innerHTML=batches.map(b=>{
+    const ch=CHANNELS.find(c=>c.id===b.channel_id);
+    const nome=ch?sanitize(ch.name):sanitize(b.channel_name||'Canal removido');
+    const quando=new Date(b.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const cor=ch?chColor(ch.type):'#6b7280';
+    return`<div class="ch-card" style="align-items:center">
+      <div class="ch-icon" style="background:${cor}">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="ch-info">
+        <div class="ch-name">${nome}</div>
+        <div class="ch-type">${b.created_count} anúncio${b.created_count!==1?'s':''} · ${quando}</div>
+      </div>
+      <div class="ch-actions">
+        <button class="btn btn-sm" style="color:var(--rd);border-color:rgba(239,68,68,.3)" onclick="undoImportBatch('${b.id}')">Desfazer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function undoImportBatch(batchId){
+  const b=(IMPORT_BATCHES||[]).find(x=>x.id===batchId);
+  if(!b)return;
+  const ch=CHANNELS.find(c=>c.id===b.channel_id);
+  const nome=ch?ch.name:(b.channel_name||'canal');
+  const quando=new Date(b.created_at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  // Confirmação explícita mostrando exatamente o que será apagado
+  if(!confirm(`Desfazer importação\n\nVai APAGAR ${b.created_count} anúncio${b.created_count!==1?'s':''} do canal "${nome}" importado${b.created_count!==1?'s':''} em ${quando}.\n\nEssa ação NÃO pode ser desfeita. Confirmar?`))return;
+  try{
+    const {data,error}=await SB.rpc('revert_import_batch',{p_batch_id:batchId});
+    if(error)throw error;
+    if(!data?.ok){setSyncStatus('err');alert(data?.error||'Não foi possível desfazer');return;}
+    // Remove do estado local sem precisar recarregar tudo
+    LISTINGS=LISTINGS.filter(l=>l.import_batch_id!==batchId);
+    IMPORT_BATCHES=IMPORT_BATCHES.filter(x=>x.id!==batchId);
+    setSyncStatus('ok');
+    alert(`Pronto! ${data.deleted} anúncio${data.deleted!==1?'s':''} removido${data.deleted!==1?'s':''} do canal "${nome}".`);
+    renderSidebar();renderDash();renderChannel();updateConfig();
+  }catch(e){
+    console.error('undoImportBatch error:',e);
+    setSyncStatus('err');
+    alert('Erro ao desfazer: '+(e.message||e));
+  }
+}
+
 function updateConfig(){
   renderUpsellCard();
+  renderImportBatches();
   const emailEl=document.getElementById('cfg-email');
   const planEl=document.getElementById('cfg-plan');
   const expEl=document.getElementById('cfg-plan-expiry');
@@ -2609,15 +2801,15 @@ function updateConfig(){
   const chDiv=document.getElementById('cfg-channels');
   if(chDiv){
     chDiv.innerHTML=CHANNELS.length?CHANNELS.map(ch=>{
-      const color=ch.type==='ml'?'#f59e0b':'#f97316';
+      const color=chColor(ch.type);
       const cnt=LISTINGS.filter(l=>l.channel_id===ch.id).length;
       return`<div class="ch-card">
         <div class="ch-icon" style="background:${color}">
-          <svg viewBox="0 0 24 24">${ch.type==='ml'?'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>':'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>'}</svg>
+          <svg viewBox="0 0 24 24">${chIcoPath(ch.type)}</svg>
         </div>
         <div class="ch-info">
           <div class="ch-name">${sanitize(ch.name)}</div>
-          <div class="ch-type">${ch.type==='ml'?'Mercado Livre':'Shopee'} · ${cnt} anúncios</div>
+          <div class="ch-type">${chName(ch.type)} · ${cnt} anúncios</div>
         </div>
         <div class="ch-actions">
           <button class="btn btn-sm" onclick="editChannel('${ch.id}')">Editar</button>
