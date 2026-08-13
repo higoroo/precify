@@ -174,9 +174,12 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 /* ── METRICS ── */
 .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
 .met{background:var(--sur);border:1px solid var(--bd);border-radius:var(--rs2);padding:14px;transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease)}
+.met-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:11px}
+.met-ico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.met-alert{border-color:rgba(239,68,68,.35);background:linear-gradient(150deg,rgba(239,68,68,.06),var(--sur))}
 .met:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--bd2)}
 .met-label{font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
-.met-val{font-size:24px;font-weight:800;letter-spacing:-.6px;line-height:1.1;font-family:var(--font);font-variant-numeric:tabular-nums}
+.met-val{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.1;font-family:var(--font);font-variant-numeric:tabular-nums}
 .met-sub{font-size:11px;color:var(--t3);margin-top:3px}
 
 /* ── TABLE ── */
@@ -1755,16 +1758,16 @@ function renderDash(){
   const sub=document.getElementById('dash-sub');
   if(sub)sub.textContent=`${all.length} anúncio${all.length!==1?'s':''} ativos${inactiveTotal?` · ${inactiveTotal} inativo${inactiveTotal!==1?'s':''}`:''} · ${CHANNELS.length} canal${CHANNELS.length!==1?'is':''}`;
 
-  // Metrics
+  // Metrics — Total, Margem média, Saudáveis (>15%), No prejuízo (≤0%)
   const avgMarg=all.length?all.reduce((s,a)=>s+a.margem,0)/all.length:0;
-  const ok=all.filter(a=>a.margem>=16);
-  const crit=all.filter(a=>a.margem<10);
+  const ok=all.filter(a=>a.margem>15);
+  const prej=all.filter(a=>a.margem<=0);
   const met=document.getElementById('dash-metrics');
   if(met)met.innerHTML=`
-    <div class="met"><div class="met-label">Total</div><div class="met-val" data-final="${all.length}" data-fmt="int">0</div><div class="met-sub">anúncios</div></div>
-    <div class="met"><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avgMarg}" data-fmt="pct1" style="color:${avgMarg>=16?'var(--gr)':'var(--rd)'}">0%</div><div class="met-sub">geral</div></div>
-    <div class="met"><div class="met-label" style="color:var(--gr)">Saudáveis</div><div class="met-val" data-final="${ok.length}" data-fmt="int" style="color:var(--gr)">0</div><div class="met-sub">${all.length?(ok.length/all.length*100).toFixed(0):0}% do total</div></div>
-    <div class="met"><div class="met-label" style="color:var(--rd)">Críticos</div><div class="met-val" data-final="${crit.length}" data-fmt="int" style="color:${crit.length?'var(--rd)':'var(--t)'}">0</div><div class="met-sub">margem &lt;10%</div></div>`;
+    <div class="met"><div class="met-ico" style="background:rgba(159,160,170,.12);color:#c5c5cc"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="met-label">Total</div><div class="met-val" data-final="${all.length}" data-fmt="int">0</div><div class="met-sub">anúncios ativos</div></div>
+    <div class="met"><div class="met-ico" style="background:rgba(130,87,245,.14);color:#a78bfa"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avgMarg}" data-fmt="pct1" style="color:${avgMarg>15?'var(--gr)':avgMarg>0?'var(--am)':'var(--rd)'}">0%</div><div class="met-sub">geral</div></div>
+    <div class="met"><div class="met-ico" style="background:rgba(34,197,94,.12);color:#22c55e"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="met-label">Saudáveis</div><div class="met-val" data-final="${ok.length}" data-fmt="int" style="color:var(--gr)">0</div><div class="met-sub">margem &gt;15%</div></div>
+    <div class="met ${prej.length?'met-alert':''}"><div class="met-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="met-label">No prejuízo</div><div class="met-val" data-final="${prej.length}" data-fmt="int" style="color:${prej.length?'var(--rd)':'var(--gr)'}">0</div><div class="met-sub">margem &le;0%</div></div>`;
   animateMetrics(met);
 
   // Top/bot
@@ -1891,16 +1894,17 @@ async function renderChannel(){
   }
 
   const avg=activeRows.length?activeRows.reduce((s,l)=>s+l.margem,0)/activeRows.length:0;
-  const ok=activeRows.filter(l=>l.margem>=16).length;
+  const ok=activeRows.filter(l=>l.margem>15).length;
+  const prej=activeRows.filter(l=>l.margem<=0).length;
   const inCount=inactiveRows.length;
   if(sub)sub.textContent=`${activeRows.length} ativos${inCount?` · ${inCount} inativo${inCount!==1?'s':''}`:''} · avg ${avg.toFixed(1)}%`;
 
   const met=document.getElementById('ch-metrics');
   if(met)met.innerHTML=`
-    <div class="met"><div class="met-label">Total</div><div class="met-val" data-final="${listings.length}" data-fmt="int">0</div></div>
-    <div class="met"><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avg}" data-fmt="pct1" style="color:${avg>=16?'var(--gr)':'var(--rd)'}">0%</div></div>
-    <div class="met"><div class="met-label" style="color:var(--gr)">Saudáveis</div><div class="met-val" data-final="${ok}" data-fmt="int" style="color:var(--gr)">0</div></div>
-    <div class="met"><div class="met-label">Faturamento</div><div class="met-val prv" data-final="${listings.reduce((s,l)=>s+(l.pv||0),0)}" data-fmt="currency" style="font-size:16px">R$\u00a00,00</div></div>`;
+    <div class="met"><div class="met-ico" style="background:rgba(159,160,170,.12);color:#c5c5cc"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="met-label">Total</div><div class="met-val" data-final="${activeRows.length}" data-fmt="int">0</div><div class="met-sub">ativos</div></div>
+    <div class="met"><div class="met-ico" style="background:rgba(130,87,245,.14);color:#a78bfa"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avg}" data-fmt="pct1" style="color:${avg>15?'var(--gr)':avg>0?'var(--am)':'var(--rd)'}">0%</div></div>
+    <div class="met"><div class="met-ico" style="background:rgba(34,197,94,.12);color:#22c55e"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="met-label">Saudáveis</div><div class="met-val" data-final="${ok}" data-fmt="int" style="color:var(--gr)">0</div><div class="met-sub">&gt;15%</div></div>
+    <div class="met ${prej?'met-alert':''}"><div class="met-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="met-label">No prejuízo</div><div class="met-val" data-final="${prej}" data-fmt="int" style="color:${prej?'var(--rd)':'var(--gr)'}">0</div><div class="met-sub">&le;0%</div></div>`;
   animateMetrics(met);
 
   // Tags header
