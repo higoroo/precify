@@ -21,6 +21,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   --bg:#0a0a0c;
@@ -626,6 +627,10 @@ select.tbl-inp{cursor:pointer}
                 <option value="margem_asc">Margem ↑</option>
                 <option value="nome_asc">Nome A-Z</option>
               </select>
+              <label class="btn btn-sm" id="btn-import-shein" style="display:none;cursor:pointer;margin:0" title="Importar planilha de produtos exportada da Shein">
+                ↑ Importar planilha
+                <input type="file" accept=".xlsx,.xls" style="display:none" onchange="importSheinXlsx(event)">
+              </label>
               <button class="btn btn-p btn-sm" onclick="openListing()">+ Anúncio</button>
             </div>
           </div>
@@ -1785,6 +1790,10 @@ async function renderChannel(){
   const title=document.getElementById('ch-title');
   const sub=document.getElementById('ch-sub');
   if(title)title.textContent=ch.name;
+
+  // Botão "Importar planilha" só aparece em canais Shein
+  const btnImp=document.getElementById('btn-import-shein');
+  if(btnImp)btnImp.style.display=ch.type==='shein'?'':'none';
 
   // Busca TODOS os anúncios do canal — os trancados vêm com os campos
   // financeiros nulos (mascarados no banco, não só escondidos no front).
@@ -2973,6 +2982,137 @@ function exportCustoCSV(){
   const a=document.createElement('a');
   a.href=url;a.download='meus_custos_precifica.csv';a.click();
   URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════
+// IMPORTAÇÃO DE PLANILHA SHEIN (.xlsx)
+// ══════════════════════════════════════════════
+// Estimador de frete por peso cubado (mesma fórmula do form Shein).
+function _sheinFreteEstimado(c,l,a){
+  if(!(c>0&&l>0&&a>0))return 0;
+  const cub=(c*l*a)/6000;
+  let e=SHEIN_A*cub+SHEIN_B;
+  return Math.round(Math.max(e,4)*100)/100;
+}
+
+async function importSheinXlsx(event){
+  const file=event.target.files[0];
+  event.target.value=''; // permite reimportar o mesmo arquivo
+  if(!file)return;
+
+  const ch=CHANNELS.find(c=>c.id===_activeCh);
+  if(!ch||ch.type!=='shein'){alert('A importação de planilha só funciona em canais Shein.');return;}
+  if(typeof XLSX==='undefined'){alert('Biblioteca de leitura ainda carregando. Tente de novo em alguns segundos.');return;}
+
+  setSyncStatus('sync');
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    // A aba principal da exportação Shein chama "Informação do produto"
+    const sheetName=wb.SheetNames.find(n=>/informa|produto|product/i.test(n))||wb.SheetNames[0];
+    const ws=wb.Sheets[sheetName];
+    const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''}); // matriz linha a linha
+    if(!rows.length){setSyncStatus('err');alert('Planilha vazia ou ilegível.');return;}
+
+    // Mapeia colunas pelo cabeçalho (robusto a mudança de ordem)
+    const header=rows[0].map(h=>String(h||'').trim().toLowerCase());
+    const findCol=(...termos)=>header.findIndex(h=>termos.every(t=>h.includes(t)));
+    const cSkc  =findCol('skc');
+    const cNome =(()=>{let i=findCol('nome','produto','padrão');return i>=0?i:findCol('nome','produto');})();
+    const cPreco=(()=>{let i=findCol('oferta','especial');return i>=0?i:findCol('preço');})();
+    const cStat =findCol('estado','prateleira');
+    const cComp =findCol('comprimento');
+    const cLarg =findCol('largura');
+    const cAlt  =findCol('altura');
+
+    if(cSkc<0||cPreco<0){
+      setSyncStatus('err');
+      alert('Não reconheci as colunas da planilha (SKC / preço). Confira se é a exportação de produtos da Shein.');
+      return;
+    }
+
+    // Extrai os produtos válidos
+    const parsed=[];
+    for(let r=1;r<rows.length;r++){
+      const row=rows[r];
+      const skc=String(row[cSkc]||'').trim();
+      if(!skc)continue;
+      const nome=String(row[cNome]||'').trim()||'(sem nome)';
+      const preco=parseFloat(String(row[cPreco]).replace(',','.').replace(/[^0-9.]/g,''))||0;
+      const statusRaw=String(row[cStat]||'').trim().toLowerCase();
+      const status=statusRaw.includes('ativo')?'ativo':(statusRaw?'inativo':'ativo');
+      const comp=parseFloat(String(row[cComp]).replace(',','.'))||0;
+      const larg=parseFloat(String(row[cLarg]).replace(',','.'))||0;
+      const alt =parseFloat(String(row[cAlt]).replace(',','.'))||0;
+      const frete=_sheinFreteEstimado(comp,larg,alt);
+      parsed.push({cod:skc,nome,preco,status,frete});
+    }
+
+    if(!parsed.length){setSyncStatus('err');alert('Nenhum produto válido encontrado na planilha.');return;}
+
+    // Dedup por código (SKC) — não reimporta o que já existe no canal
+    const existentes=new Set(LISTINGS.filter(l=>l.channel_id===ch.id).map(l=>String(l.cod)));
+    let novos=parsed.filter(p=>!existentes.has(p.cod));
+    const duplicados=parsed.length-novos.length;
+
+    if(!novos.length){
+      setSyncStatus('ok');
+      alert(`Todos os ${duplicados} produto${duplicados!==1?'s':''} da planilha já existem neste canal. Nada a importar.`);
+      return;
+    }
+
+    // Limite de plano (Free)
+    if(!isPro()){
+      const atuais=LISTINGS.filter(l=>l.channel_id===ch.id).length;
+      const vagas=PLAN_LIMITS.anunciosPorCanal-atuais;
+      if(vagas<=0){setSyncStatus('ok');openUpgradeModal('Limite de anúncios atingido',`No plano Free você pode ter até ${PLAN_LIMITS.anunciosPorCanal} anúncios por canal. Faça upgrade para Pro e importe todos.`);return;}
+      if(novos.length>vagas){
+        if(!confirm(`Plano Free: só há ${vagas} vaga${vagas!==1?'s':''} neste canal. Importar apenas os primeiros ${vagas} de ${novos.length}?`)){setSyncStatus('ok');return;}
+        novos=novos.slice(0,vagas);
+      }
+    }
+
+    // Confirmação antes de gravar
+    if(!confirm(`Importar ${novos.length} anúncio${novos.length!==1?'s':''} da Shein para o canal "${ch.name}"?${duplicados?`\n(${duplicados} já existiam e serão ignorados)`:''}\n\nO frete é estimado pelas dimensões — confira depois nos anúncios grandes.`)){setSyncStatus('ok');return;}
+
+    // 1) Cria o batch (pra permitir "desfazer importação")
+    let batchId=null;
+    try{
+      const{data:batch,error:be}=await SB.from('import_batches').insert({
+        user_id:USER.id,channel_id:ch.id,channel_name:ch.name,
+        source:'shein_xlsx',created_count:novos.length,status:'active'
+      }).select().single();
+      if(be)throw be;
+      batchId=batch.id;
+      IMPORT_BATCHES.unshift(batch);
+    }catch(be){
+      console.warn('Não foi possível criar o batch (segue sem desfazer):',be.message);
+    }
+
+    // 2) Monta e insere os anúncios (comissão 18% default Shein, cupom 5%/máx10)
+    const toInsert=novos.map(p=>({
+      user_id:USER.id,channel_id:ch.id,
+      cod:p.cod,nome:p.nome,preco:p.preco,preco_d:0,custo:0,
+      com:18,frete:p.frete,desc_pct:5,desc_max:10,imp:10,
+      status:p.status,
+      import_batch_id:batchId
+    }));
+
+    const{data:inserted,error}=await SB.from('listings').insert(toInsert).select();
+    if(error)throw error;
+    LISTINGS.push(...(inserted||[]));
+
+    setSyncStatus('ok');
+    renderChannel();renderSidebar();renderDash();updateConfig();
+
+    const msg=[`${inserted.length} anúncio${inserted.length!==1?'s':''} importado${inserted.length!==1?'s':''}`,
+      duplicados?`${duplicados} ignorado${duplicados!==1?'s':''} (já existiam)`:null].filter(Boolean).join(' · ');
+    alert('Pronto! '+msg+'.\n\nOs custos vieram zerados — preencha para ver a margem real. Se importou errado, use "Desfazer" em Configurações.');
+  }catch(e){
+    console.error('importSheinXlsx error:',e);
+    setSyncStatus('err');
+    alert('Erro ao importar a planilha: '+(e.message||e));
+  }
 }
 
 async function importCustoCSV(event){
