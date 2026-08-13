@@ -140,6 +140,7 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sidebar{width:220px;background:var(--sur);border-right:1px solid var(--bd);display:flex;flex-direction:column;padding:10px 8px;gap:1px;overflow-y:auto;flex-shrink:0}
 .sidebar-section{font-size:10px;font-weight:700;color:var(--t3);letter-spacing:.8px;text-transform:uppercase;padding:8px 8px 4px;margin-top:4px}
 .sidebar-section:first-child{margin-top:0}
+.ch-group-label{font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;padding:8px 10px 4px;margin-top:2px}
 .ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;border:none;background:none;color:var(--t2);font-family:var(--font);font-size:13px;font-weight:500;width:100%;text-align:left;transition:background .15s,color .15s;position:relative}
 .ni:hover{background:var(--sur2);color:var(--t)}
 .ni.active{background:var(--sur2);color:var(--t)}
@@ -1362,6 +1363,19 @@ function chName(t){return t==='ml'?'Mercado Livre':t==='shopee'?'Shopee':t==='sh
 function chIcoPath(t){return t==='ml'?ICO_ML_PATH:t==='shopee'?ICO_SH_PATH:t==='shein'?ICO_SE_PATH:ICO_ML_PATH;}
 function chIcoCls(t){return t==='ml'?'ml':t==='shopee'?'sh':t==='shein'?'se':'ml';}
 
+// Deduz a "loja" pelo nome do canal (remove prefixo do marketplace).
+// Ex: "ML IW" → "IW", "Shopee Nikko" → "Nikko". Sem padrão → nome inteiro.
+function lojaDe(nome){
+  const n=String(nome||'').trim(), low=n.toLowerCase();
+  for(const p of ['mercado livre','mercadolivre','shopee','shein','ml']){
+    if(low.startsWith(p+' '))return n.slice(p.length).trim();
+  }
+  return n;
+}
+function lojasUnicas(){
+  const seen=[];CHANNELS.forEach(ch=>{const l=lojaDe(ch.name);if(!seen.includes(l))seen.push(l);});return seen;
+}
+
 function calcML(a){
   const pv=a.preco_d>0?a.preco_d:a.preco;
   const comPct=a.com||11.5;
@@ -1617,9 +1631,7 @@ function renderSidebar(){
 
   const mkItem=(ch,isDrawer)=>{
     const color=chColor(ch.type);
-    const icon=ch.type==='ml'
-      ?'<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>'
-      :'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>';
+    const icon=chIcoPath(ch.type);
     const cnt=LISTINGS.filter(l=>l.channel_id===ch.id).length;
     if(isDrawer){
       return `<button class="drawer-item" onclick="closeDrawers();goChannel('${ch.id}')">
@@ -1634,8 +1646,20 @@ function renderSidebar(){
     </button>`;
   };
 
-  cont.innerHTML=CHANNELS.map(ch=>mkItem(ch,false)).join('');
-  if(drawerList)drawerList.innerHTML=CHANNELS.map(ch=>mkItem(ch,true)).join('');
+  // Agrupa por loja (deduzida do nome). Se só houver 1 loja, não mostra cabeçalho.
+  const lojas=lojasUnicas();
+  const mostrarGrupos=lojas.length>1;
+  const buildGrouped=(isDrawer)=>{
+    if(!mostrarGrupos)return CHANNELS.map(ch=>mkItem(ch,isDrawer)).join('');
+    return lojas.map(loja=>{
+      const doGrupo=CHANNELS.filter(ch=>lojaDe(ch.name)===loja);
+      const header=`<div class="ch-group-label">${sanitize(loja)}</div>`;
+      return header+doGrupo.map(ch=>mkItem(ch,isDrawer)).join('');
+    }).join('');
+  };
+
+  cont.innerHTML=buildGrouped(false);
+  if(drawerList)drawerList.innerHTML=buildGrouped(true);
 }
 
 // ══════════════════════════════════════════════
