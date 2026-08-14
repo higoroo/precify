@@ -193,9 +193,18 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sim-imgs-hint{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t3);padding:9px 11px;border:1px dashed var(--bd2);border-radius:8px;cursor:pointer;transition:border-color .15s}
 .sim-imgs-hint:hover,.sim-imgs-hint:focus{border-color:var(--pu);outline:none}
 .sim-img-pick{background:none;border:none;color:var(--pu);cursor:pointer;font:inherit;font-weight:600;padding:0;text-decoration:underline}
-.sim-card-imgs{display:flex;gap:6px;margin:8px 0}
+.sim-card-imgs{display:flex;gap:6px;margin:8px 0;align-items:center;flex-wrap:wrap}
 .sim-card-imgs img{width:52px;height:52px;border-radius:7px;object-fit:cover;border:1px solid var(--bd2);cursor:pointer;transition:transform .12s}
 .sim-card-imgs img:hover{transform:scale(1.05)}
+.sim-hist-thumb{position:relative;width:52px;height:52px}
+.sim-hist-thumb .rm{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:var(--rd);color:#fff;border:2px solid var(--bg);cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.sim-hist-thumb.up{border:1px solid var(--bd2);border-radius:7px;display:flex;align-items:center;justify-content:center}
+.sim-hist-thumb.up::after{content:'';width:16px;height:16px;border:2px solid var(--bd2);border-top-color:var(--pu);border-radius:50%;animation:spin .7s linear infinite}
+.sim-hist-addimg{width:52px;height:52px;border-radius:7px;border:1px dashed var(--bd2);background:var(--sur2);color:var(--t3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .15s var(--ease)}
+.sim-hist-addimg:hover{border-color:var(--pu);color:var(--pu)}
+.sim-hist-addimg svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.sim-hist-addimg span{font-size:9px;font-weight:600}
+@keyframes spin{to{transform:rotate(360deg)}}
 .sim-img-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
 .sim-img-lightbox img{max-width:90vw;max-height:90vh;border-radius:10px}
 .dash-lojas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
@@ -3550,6 +3559,57 @@ function openSimImg(url){
   document.body.appendChild(lb);
 }
 
+// Atualiza o campo data.imgs de uma simulação já salva, no banco e no cache
+async function updateHistImgs(id, novasImgs){
+  const rec=(_simCache||[]).find(s=>s.id===id);
+  if(!rec)return;
+  const novoData={...(rec.data||{}), imgs:novasImgs};
+  setSyncStatus('syncing');
+  try{
+    const{error}=await SB.from('simulations').update({data:novoData}).eq('id',id).eq('user_id',USER.id);
+    if(error)throw error;
+    rec.data=novoData; // atualiza cache local
+    setSyncStatus('ok');
+    renderSimHist();
+  }catch(e){setSyncStatus('err');alert('Erro ao atualizar fotos: '+e.message);}
+}
+
+// Adiciona uma foto a uma simulação já salva (abre seletor de arquivo)
+function addHistImg(id){
+  const rec=(_simCache||[]).find(s=>s.id===id);
+  if(!rec)return;
+  const atuais=Array.isArray(rec.data?.imgs)?rec.data.imgs:[];
+  if(atuais.length>=2){alert('Máximo de 2 fotos por simulação.');return;}
+  const inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';
+  inp.onchange=async ev=>{
+    const f=ev.target.files[0];
+    if(!f||!f.type.startsWith('image/'))return;
+    // mostra loading no card
+    const box=document.getElementById('histimgs-'+id);
+    if(box)box.insertAdjacentHTML('beforeend','<div class="sim-hist-thumb up" id="histup-'+id+'"></div>');
+    try{
+      const url=await uploadSimImg(f);
+      await updateHistImgs(id, [...atuais, url]);
+    }catch(e){
+      document.getElementById('histup-'+id)?.remove();
+      alert('Erro ao enviar imagem: '+(e.message||e)+'\n\nConfira se o bucket "sim-imagens" existe.');
+    }
+  };
+  inp.click();
+}
+
+// Remove uma foto de uma simulação já salva
+async function removeHistImg(id, idx){
+  const rec=(_simCache||[]).find(s=>s.id===id);
+  if(!rec)return;
+  const atuais=Array.isArray(rec.data?.imgs)?[...rec.data.imgs]:[];
+  if(idx<0||idx>=atuais.length)return;
+  if(!confirm('Remover esta foto?'))return;
+  atuais.splice(idx,1);
+  await updateHistImgs(id, atuais);
+}
+
 function renderSimImgs(){
   const row=document.getElementById('sim-im-imgs-row');
   if(!row)return;
@@ -3863,7 +3923,12 @@ async function renderSimHist(){
     }
     const date=new Date(s.created_at).toLocaleString('pt-BR');
     const imgs=(s.type==='im'&&Array.isArray(s.data?.imgs))?s.data.imgs:[];
-    const imgsHTML=imgs.length?`<div class="sim-card-imgs">${imgs.map(u=>`<img src="${u}" alt="" onclick="openSimImg('${u}')">`).join('')}</div>`:'';
+    let imgsHTML='';
+    if(s.type==='im'){
+      const thumbs=imgs.map((u,ix)=>`<div class="sim-hist-thumb"><img src="${u}" alt="" onclick="openSimImg('${u}')"><button class="rm" onclick="event.stopPropagation();removeHistImg('${s.id}',${ix})" title="Remover foto">×</button></div>`).join('');
+      const addBtn=imgs.length<2?`<button class="sim-hist-addimg" onclick="addHistImg('${s.id}')" title="Adicionar foto"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>foto</span></button>`:'';
+      if(thumbs||addBtn)imgsHTML=`<div class="sim-card-imgs" id="histimgs-${s.id}">${thumbs}${addBtn}</div>`;
+    }
     const custoDisponivel = s.type==='im' ? s.custo_unit : s.custo;
     const actions = custoDisponivel ? `
       <div class="sim-card-actions">
