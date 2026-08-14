@@ -3574,12 +3574,20 @@ async function updateHistImgs(id, novasImgs){
   const novoData={...(rec.data||{}), imgs:novasImgs};
   setSyncStatus('syncing');
   try{
-    const{error}=await SB.from('simulations').update({data:novoData}).eq('id',id).eq('user_id',USER.id);
+    const{data,error}=await SB.from('simulations').update({data:novoData}).eq('id',id).eq('user_id',USER.id).select();
     if(error)throw error;
-    rec.data=novoData; // atualiza cache local
+    // Se o UPDATE não retornou nenhuma linha, o RLS bloqueou (falta policy de UPDATE)
+    if(!data||!data.length){
+      throw new Error('A atualização não foi aplicada. Provavelmente falta a policy de UPDATE na tabela "simulations".');
+    }
+    rec.data=novoData; // atualiza cache local só se realmente salvou
     setSyncStatus('ok');
     renderSimHist();
-  }catch(e){setSyncStatus('err');alert('Erro ao atualizar fotos: '+e.message);}
+  }catch(e){
+    setSyncStatus('err');
+    console.error('[updateHistImgs]',e);
+    alert('Não foi possível salvar a foto:\n'+e.message);
+  }
 }
 
 let _histImgTargetId=null;
