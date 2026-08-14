@@ -1920,6 +1920,7 @@ async function renderChannel(){
 
   const avg=activeRows.length?activeRows.reduce((s,l)=>s+l.margem,0)/activeRows.length:0;
   const ok=activeRows.filter(l=>l.margem>15).length;
+  const aten=activeRows.filter(l=>l.margem>0&&l.margem<=15).length;
   const prej=activeRows.filter(l=>l.margem<=0).length;
   const inCount=inactiveRows.length;
   if(sub)sub.textContent=`${activeRows.length} ativos${inCount?` · ${inCount} inativo${inCount!==1?'s':''}`:''} · avg ${avg.toFixed(1)}%`;
@@ -1929,7 +1930,8 @@ async function renderChannel(){
     <div class="met"><div class="met-ico" style="background:rgba(159,160,170,.12);color:#c5c5cc"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="met-label">Total</div><div class="met-val" data-final="${activeRows.length}" data-fmt="int">0</div><div class="met-sub">ativos</div></div>
     <div class="met"><div class="met-ico" style="background:rgba(130,87,245,.14);color:#a78bfa"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avg}" data-fmt="pct1" style="color:${avg>15?'var(--gr)':avg>0?'var(--am)':'var(--rd)'}">0%</div></div>
     <div class="met"><div class="met-ico" style="background:rgba(34,197,94,.12);color:#22c55e"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="met-label">Saudáveis</div><div class="met-val" data-final="${ok}" data-fmt="int" style="color:var(--gr)">0</div><div class="met-sub">&gt;15%</div></div>
-    <div class="met ${prej?'met-alert':''}"><div class="met-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="met-label">No prejuízo</div><div class="met-val" data-final="${prej}" data-fmt="int" style="color:${prej?'var(--rd)':'var(--gr)'}">0</div><div class="met-sub">&le;0%</div></div>`;
+    <div class="met ${aten?'met-warn':''}"><div class="met-ico" style="background:rgba(245,158,11,.14);color:#f59e0b"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="met-label">Atenção</div><div class="met-val" data-final="${aten}" data-fmt="int" style="color:${aten?'var(--am)':'var(--t)'}">0</div><div class="met-sub">0–15%</div></div>
+    <div class="met ${prej?'met-alert':''}"><div class="met-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="met-label">Prejuízo</div><div class="met-val" data-final="${prej}" data-fmt="int" style="color:${prej?'var(--rd)':'var(--gr)'}">0</div><div class="met-sub">&le;0%</div></div>`;
   animateMetrics(met);
 
   // Tags header
