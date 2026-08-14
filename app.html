@@ -205,6 +205,14 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .sim-hist-addimg svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
 .sim-hist-addimg span{font-size:9px;font-weight:600}
 @keyframes spin{to{transform:rotate(360deg)}}
+.hist-img-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px}
+.hist-img-box{background:var(--sur);border:1px solid var(--bd2);border-radius:var(--rs2);padding:18px;width:100%;max-width:340px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.hist-img-title{font-size:15px;font-weight:700;color:var(--t);margin-bottom:12px}
+.hist-img-drop{display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 16px;border:1px dashed var(--bd2);border-radius:var(--rs);cursor:text;text-align:center;color:var(--t2);font-size:13px;transition:border-color .15s;outline:none}
+.hist-img-drop:focus,.hist-img-drop:hover{border-color:var(--pu)}
+.hist-img-drop svg{width:26px;height:26px;stroke:var(--t3);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.hist-img-drop small{color:var(--t3)}
+.hist-img-status{font-size:12px;text-align:center;margin-top:8px;min-height:16px}
 .sim-img-lightbox{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
 .sim-img-lightbox img{max-width:90vw;max-height:90vh;border-radius:10px}
 .dash-lojas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
@@ -3574,29 +3582,76 @@ async function updateHistImgs(id, novasImgs){
   }catch(e){setSyncStatus('err');alert('Erro ao atualizar fotos: '+e.message);}
 }
 
-// Adiciona uma foto a uma simulação já salva (abre seletor de arquivo)
+let _histImgTargetId=null;
+let _histPasteHandler=null;
+
+// Abre modal pra adicionar foto (colar print OU escolher arquivo) numa simulação salva
 function addHistImg(id){
   const rec=(_simCache||[]).find(s=>s.id===id);
   if(!rec)return;
   const atuais=Array.isArray(rec.data?.imgs)?rec.data.imgs:[];
   if(atuais.length>=2){alert('Máximo de 2 fotos por simulação.');return;}
-  const inp=document.createElement('input');
-  inp.type='file';inp.accept='image/*';
-  inp.onchange=async ev=>{
+  _histImgTargetId=id;
+  const modal=document.createElement('div');
+  modal.className='hist-img-modal';
+  modal.id='hist-img-modal';
+  modal.innerHTML=`
+    <div class="hist-img-box" onclick="event.stopPropagation()">
+      <div class="hist-img-title">Adicionar foto</div>
+      <div class="hist-img-drop" id="hist-img-drop" tabindex="0">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>
+        <div>Cole um print aqui (Ctrl+V)<br><small>ou</small></div>
+        <button type="button" class="btn btn-sm" onclick="document.getElementById('hist-img-file').click()">Escolher arquivo</button>
+        <input type="file" id="hist-img-file" accept="image/*" style="display:none">
+      </div>
+      <div class="hist-img-status" id="hist-img-status"></div>
+      <button class="btn btn-sm" style="width:100%;margin-top:10px" onclick="closeHistImgModal()">Fechar</button>
+    </div>`;
+  modal.onclick=()=>closeHistImgModal();
+  document.body.appendChild(modal);
+  const drop=document.getElementById('hist-img-drop');
+  drop.focus();
+  drop.onclick=()=>drop.focus();
+  document.getElementById('hist-img-file').onchange=ev=>{
     const f=ev.target.files[0];
-    if(!f||!f.type.startsWith('image/'))return;
-    // mostra loading no card
-    const box=document.getElementById('histimgs-'+id);
-    if(box)box.insertAdjacentHTML('beforeend','<div class="sim-hist-thumb up" id="histup-'+id+'"></div>');
-    try{
-      const url=await uploadSimImg(f);
-      await updateHistImgs(id, [...atuais, url]);
-    }catch(e){
-      document.getElementById('histup-'+id)?.remove();
-      alert('Erro ao enviar imagem: '+(e.message||e)+'\n\nConfira se o bucket "sim-imagens" existe.');
+    if(f)processHistImg(f);
+  };
+  _histPasteHandler=ev=>{
+    const items=ev.clipboardData?.items;
+    if(!items)return;
+    for(const it of items){
+      if(it.type&&it.type.startsWith('image/')){
+        const f=it.getAsFile();
+        if(f){ev.preventDefault();processHistImg(f);return;}
+      }
     }
   };
-  inp.click();
+  document.addEventListener('paste',_histPasteHandler);
+}
+
+function closeHistImgModal(){
+  if(_histPasteHandler){document.removeEventListener('paste',_histPasteHandler);_histPasteHandler=null;}
+  document.getElementById('hist-img-modal')?.remove();
+  _histImgTargetId=null;
+}
+
+// Sobe a foto (de colar ou arquivo) e anexa na simulação salva
+async function processHistImg(file){
+  const id=_histImgTargetId;
+  if(!id||!file||!file.type.startsWith('image/'))return;
+  const rec=(_simCache||[]).find(s=>s.id===id);
+  const atuais=Array.isArray(rec?.data?.imgs)?rec.data.imgs:[];
+  if(atuais.length>=2){alert('Máximo de 2 fotos.');return;}
+  const status=document.getElementById('hist-img-status');
+  if(status){status.textContent='⏳ Enviando...';status.style.color='var(--t2)';}
+  try{
+    const url=await uploadSimImg(file);
+    await updateHistImgs(id, [...atuais, url]);
+    closeHistImgModal();
+  }catch(e){
+    if(status){status.textContent='❌ '+(e.message||e);status.style.color='var(--rd)';}
+    console.error('[processHistImg]',e);
+  }
 }
 
 // Remove uma foto de uma simulação já salva
