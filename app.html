@@ -581,7 +581,7 @@ select.tbl-inp{cursor:pointer}
         Custos
       </button>
       <button class="ni" data-tab="sim" onclick="goTab('sim')">
-        <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+        <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
         Simuladora
       </button>
       <div class="sidebar-section">Canais</div>
@@ -981,7 +981,7 @@ select.tbl-inp{cursor:pointer}
       <div class="drawer-item-text"><strong>Custos</strong><span>Catálogo e vínculos</span></div>
     </button>
     <button class="drawer-item" data-tab="sim" onclick="closeDrawers();goTab('sim')">
-      <svg viewBox="0 0 24 24"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2v-4M9 21H5a2 2 0 0 1-2-2v-4m0 0h18"/></svg>
+      <svg viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="8" y1="10" x2="8" y2="10"/><line x1="12" y1="10" x2="12" y2="10"/><line x1="16" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="18"/><line x1="8" y1="18" x2="12" y2="18"/></svg>
       <div class="drawer-item-text"><strong>Simuladora</strong><span>Teste cenários de precificação</span></div>
     </button>
     <button class="drawer-item" data-tab="config" onclick="closeDrawers();goTab('config')">
@@ -3641,8 +3641,13 @@ async function saveSimulation(type){
   }else{
     if(!_simIMCusto){alert('Calcule o custo de importação primeiro.');return;}
     payload.nome=gs('sim-im-nome')||'Importação';
-    payload.custo_unit=_simIMCusto;
-    payload.data={prod:gn('sim-im-prod'),frete:gn('sim-im-frete'),seg:gn('sim-im-seg'),qty:gn('sim-im-qty')||1,dolar:gn('sim-im-dolar'),ii:gn('sim-im-ii'),icms:gn('sim-im-icms'),adm:gn('sim-im-adm')};
+    payload.custo_unit=Number(_simIMCusto)||0;
+    payload.pv=null;payload.custo=Number(_simIMCusto)||0;payload.lucro=null;payload.margem=null;
+    payload.data={
+      prod:gn('sim-im-prod')||0, frete:gn('sim-im-frete')||0, seg:gn('sim-im-seg')||0,
+      qty:gn('sim-im-qty')||1, dolar:gn('sim-im-dolar')||0, ii:gn('sim-im-ii')||0,
+      icms:gn('sim-im-icms')||0, adm:gn('sim-im-adm')||0
+    };
   }
 
   setSyncStatus('syncing');
@@ -3655,7 +3660,16 @@ async function saveSimulation(type){
     renderSimHist();
   }catch(e){
     setSyncStatus('err');
-    alert('Erro ao salvar: '+e.message+'\n\nVerifique se a tabela "simulations" foi criada no Supabase.');
+    console.error('[saveSimulation] payload:',payload);
+    console.error('[saveSimulation] erro:',e);
+    const msg=e.message||JSON.stringify(e);
+    let dica='';
+    if(/column|coluna|custo_unit|schema/i.test(msg)){
+      dica='\n\nParece faltar uma coluna na tabela "simulations". Rode o SQL de ajuste que o suporte forneceu.';
+    }else if(/row-level|rls|policy/i.test(msg)){
+      dica='\n\nParece um problema de permissão (RLS) na tabela "simulations".';
+    }
+    alert('Erro ao salvar a simulação:\n'+msg+dica);
   }
 }
 
