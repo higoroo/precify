@@ -43,6 +43,7 @@
   --ml:#ffe066;
   --sh:#f97316;
   --se:#9ca3af;
+  --az:#ff9900;
   --font:'Plus Jakarta Sans','Inter',-apple-system,sans-serif;
   --mono:'JetBrains Mono','Fira Code',monospace;
   --rs:10px;
@@ -178,6 +179,9 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .met-ico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .met-alert{border-color:rgba(239,68,68,.35);background:linear-gradient(150deg,rgba(239,68,68,.06),var(--sur))}
 .met-warn{border-color:rgba(245,158,11,.3);background:linear-gradient(150deg,rgba(245,158,11,.05),var(--sur))}
+.am-check{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--t);cursor:pointer;padding:10px 12px;background:var(--sur);border:1px solid var(--bd);border-radius:var(--rs);line-height:1.4}
+.am-check input{width:16px;height:16px;accent-color:var(--az);cursor:pointer;flex-shrink:0}
+.am-check b{color:var(--az)}
 .dash-lojas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .dash-loja{padding:7px 15px;border-radius:100px;border:1px solid var(--bd2);background:var(--sur);color:var(--t2);font-size:12.5px;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .15s var(--ease)}
 .dash-loja:hover{border-color:var(--pu);color:var(--t)}
@@ -1002,6 +1006,7 @@ select.tbl-inp{cursor:pointer}
         <option value="ml">Mercado Livre</option>
         <option value="shopee">Shopee</option>
         <option value="shein">Shein</option>
+        <option value="amazon">Amazon</option>
       </select>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
@@ -1207,6 +1212,57 @@ select.tbl-inp{cursor:pointer}
       </div>
     </div>
 
+    <!-- AMAZON FIELDS -->
+    <div id="lf-amazon-fields">
+      <div class="fg1" style="margin-bottom:10px">
+        <div class="field"><label>Status</label>
+          <select id="lf-amazon-status" class="tbl-inp" style="padding:9px 12px">
+            <option value="ativo">Ativo</option>
+            <option value="pausado">Pausado</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg1" style="margin-bottom:10px">
+        <label class="am-check"><input type="checkbox" id="lf-amazon-movel" onchange="toggleAmMovel();listingCalcLive()"> Categoria <b>Móveis</b> (comissão 15% até R$200, 10% no excedente)</label>
+      </div>
+      <div class="adv-toggle" id="lf-amazon-adv-toggle" onclick="toggleAdvanced('amazon')">
+        <span>Configurações avançadas</span>
+        <svg class="adv-chev" viewBox="0 0 24 24" stroke="currentColor" fill="none" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="adv-body" id="lf-amazon-adv-body">
+        <div class="fg2" style="margin-bottom:10px">
+          <div class="field" id="lf-amazon-com-wrap"><label>Comissão (%)</label><input type="number" id="lf-amazon-com" step=".1" oninput="listingCalcLive()"></div>
+          <div class="field"><label>Imposto (%)</label><input type="number" id="lf-amazon-imp" step=".1" oninput="listingCalcLive()"></div>
+        </div>
+        <div class="fg1" style="margin-bottom:10px">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <div class="field" style="flex:1"><label>Tarifa DBA / coleta (R$)</label><input type="number" id="lf-amazon-frete" step=".01" oninput="listingCalcLive()" placeholder="auto se abaixo de R$79"></div>
+            <button type="button" class="btn btn-sm" onclick="toggleAmazonCub()" style="white-space:nowrap;height:38px">Estimar ▾</button>
+          </div>
+          <div style="font-size:11px;color:var(--t3);margin-top:4px;line-height:1.5">Abaixo de R$79 é automático (R$4,50 / R$6,50 / R$6,75). Acima de R$79, estime pelas dimensões ou informe manual.</div>
+          <div id="lf-amazon-cub" style="display:none;margin-top:10px;padding:12px;background:var(--sur2);border:1px dashed var(--bd2);border-radius:var(--rs)">
+            <div class="fg2" style="margin-bottom:8px">
+              <div class="field"><label>Peso real (kg)</label><input type="number" id="lf-amazon-cub-peso" step=".01" oninput="calcAmazonCub()"></div>
+            </div>
+            <div class="fg3" style="margin-bottom:8px">
+              <div class="field"><label>Compr. (cm)</label><input type="number" id="lf-amazon-cub-c" step="1" oninput="calcAmazonCub()"></div>
+              <div class="field"><label>Larg. (cm)</label><input type="number" id="lf-amazon-cub-l" step="1" oninput="calcAmazonCub()"></div>
+              <div class="field"><label>Alt. (cm)</label><input type="number" id="lf-amazon-cub-a" step="1" oninput="calcAmazonCub()"></div>
+            </div>
+            <div id="lf-amazon-cub-res" style="display:none;font-size:12.5px;color:var(--t2);justify-content:space-between;align-items:center;gap:8px">
+              <span>Peso considerado: <b id="lf-amazon-cub-peso-fim" style="font-family:var(--mono);color:var(--az)">—</b></span>
+              <button type="button" class="btn btn-sm" onclick="aplicarAmazonCub()">Usar R$ <span id="lf-amazon-cub-val">—</span></button>
+            </div>
+            <div style="font-size:11px;color:var(--t3);margin-top:8px;line-height:1.5">Tabela oficial DBA, origem Interior SP. Usa o maior entre peso real e cubado + 20g. Sempre confirme com o repasse.</div>
+          </div>
+        </div>
+        <div class="fg1" style="margin-bottom:10px">
+          <label class="am-check"><input type="checkbox" id="lf-amazon-parcela" onchange="listingCalcLive()"> Parcelamento sem juros ativo <span style="color:var(--t3)">(1,5% sobre vendas ≥ R$40)</span></label>
+        </div>
+      </div>
+    </div>
+
     <!-- TAGS + OBS -->
     <div style="margin-bottom:14px">
       <div style="font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Tags</div>
@@ -1368,16 +1424,17 @@ function copyCod(cod){navigator.clipboard.writeText(String(cod)).catch(()=>{});}
 const ICO_ML_PATH='<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>';
 const ICO_SH_PATH='<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>';
 const ICO_SE_PATH='<path d="M6 2h12l4 6-10 13L2 8z"/><path d="M2 8h20"/><path d="M12 2 8 8l4 13 4-13z"/>';
-function chColor(t){return t==='ml'?'#f59e0b':t==='shopee'?'#f97316':t==='shein'?'#9ca3af':'#f59e0b';}
-function chName(t){return t==='ml'?'Mercado Livre':t==='shopee'?'Shopee':t==='shein'?'Shein':'—';}
-function chIcoPath(t){return t==='ml'?ICO_ML_PATH:t==='shopee'?ICO_SH_PATH:t==='shein'?ICO_SE_PATH:ICO_ML_PATH;}
-function chIcoCls(t){return t==='ml'?'ml':t==='shopee'?'sh':t==='shein'?'se':'ml';}
+const ICO_AZ_PATH='<path d="M3 15c2.5 2 5.5 3 9 3s6.5-1 9-3"/><path d="M18 17c.5-.8.8-1.8.5-2.5"/><path d="M7 10a5 5 0 0 1 10 0v3"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/>';
+function chColor(t){return t==='ml'?'#f59e0b':t==='shopee'?'#f97316':t==='shein'?'#9ca3af':t==='amazon'?'#ff9900':'#f59e0b';}
+function chName(t){return t==='ml'?'Mercado Livre':t==='shopee'?'Shopee':t==='shein'?'Shein':t==='amazon'?'Amazon':'—';}
+function chIcoPath(t){return t==='ml'?ICO_ML_PATH:t==='shopee'?ICO_SH_PATH:t==='shein'?ICO_SE_PATH:t==='amazon'?ICO_AZ_PATH:ICO_ML_PATH;}
+function chIcoCls(t){return t==='ml'?'ml':t==='shopee'?'sh':t==='shein'?'se':t==='amazon'?'az':'ml';}
 
 // Deduz a "loja" pelo nome do canal (remove prefixo do marketplace).
 // Ex: "ML IW" → "IW", "Shopee Nikko" → "Nikko". Sem padrão → nome inteiro.
 function lojaDe(nome){
   const n=String(nome||'').trim(), low=n.toLowerCase();
-  for(const p of ['mercado livre','mercadolivre','shopee','shein','ml']){
+  for(const p of ['mercado livre','mercadolivre','shopee','shein','amazon','ml']){
     if(low.startsWith(p+' '))return n.slice(p.length).trim();
   }
   return n;
@@ -1451,9 +1508,87 @@ function calcShein(a){
   return{pv,comissao,comPct,frete,ajml:0,outros:0,desconto,descPct,descMax,valorPlataforma,antecip:0,antPct:0,imposto,impPct,liquido,custo,lucro,margem};
 }
 
+// ══════════════════════════════════════════════
+// TABELA DBA AMAZON (oficial, região: Interior do Sul e Sudeste / Porto Ferreira-SP)
+// Peso final = max(peso real, cubado) + 20g embalagem, arredondado p/ faixa acima.
+// Colunas de preço: <100, 100-119, 120-149, 150-199, >=200
+// ══════════════════════════════════════════════
+const DBA_FAIXAS_PESO=[0.25,0.5,1,2,3,4,5,6,7,8,9,10]; // limites superiores em kg
+// [79-99.99, 100-119.99, 120-149.99, 150-199.99, >=200(interior SSE col3)]
+const DBA_TARIFAS=[
+  [11.95,13.95,15.95,17.95,20.45], // 0-250g
+  [12.85,15.00,17.15,19.30,20.95], // 250-500g
+  [13.45,15.70,17.95,20.20,21.95], // 500g-1kg
+  [14.00,16.35,18.75,21.10,23.45], // 1-2kg
+  [14.95,17.45,19.95,22.40,24.45], // 2-3kg
+  [16.15,18.85,21.55,24.20,25.95], // 3-4kg
+  [17.00,19.90,22.75,25.60,27.95], // 4-5kg
+  [25.00,30.00,34.00,38.00,36.95], // 5-6kg
+  [26.00,31.00,35.00,39.00,39.45], // 6-7kg
+  [27.00,32.00,36.00,40.00,40.45], // 7-8kg
+  [28.00,33.00,37.00,41.00,46.95], // 8-9kg
+  [39.50,46.00,52.75,59.00,65.95], // 9-10kg
+];
+const DBA_KG_ADIC=[3.05,3.05,3.05,3.50,4.00]; // por coluna de preço, acima de 10kg
+
+// Retorna a coluna de preço da tabela DBA (0-4)
+function dbaColPreco(pv){
+  if(pv<100)return 0;
+  if(pv<120)return 1;
+  if(pv<150)return 2;
+  if(pv<200)return 3;
+  return 4;
+}
+// Calcula a tarifa DBA para pv>=79, dado peso real (kg) e/ou dimensões (cm)
+function calcDbaTarifa(pv,pesoReal,c,l,a){
+  const col=dbaColPreco(pv);
+  // peso final = max(real, cubado) + 20g
+  const cubado=(c>0&&l>0&&a>0)?(c*l*a)/6000:0;
+  let peso=Math.max(pesoReal||0,cubado)+0.02;
+  if(peso<=0)return 0;
+  // acha a faixa de peso
+  let idx=DBA_FAIXAS_PESO.findIndex(lim=>peso<=lim);
+  if(idx>=0)return DBA_TARIFAS[idx][col];
+  // acima de 10kg: tarifa da última faixa + kg adicional
+  const extraKg=Math.ceil(peso-10);
+  return DBA_TARIFAS[11][col]+extraKg*DBA_KG_ADIC[col];
+}
+
+function calcAmazon(a){
+  const pv=a.preco_d>0?a.preco_d:a.preco;
+  const custo=a.custo||0;
+  const impPct=a.imp||10;
+  // Reaproveita campos: tipo='movel' → categoria Móveis (escalonada); ant>0 → parcelamento ativo
+  const isMovel=a.tipo==='movel';
+  const parcelaOn=(a.ant||0)>0;
+  const comPct=a.com||15;
+  let comissao;
+  if(isMovel){ // categoria Móveis: 15% até 200, 10% no excedente
+    comissao=pv<=200?pv*0.15:(200*0.15+(pv-200)*0.10);
+  }else{
+    comissao=pv*(comPct/100);
+  }
+  if(comissao<1)comissao=1; // comissão mínima R$1
+  // Tarifa DBA (coleta): abaixo de R$79 é fixa por faixa; acima usa o valor estimado/informado (campo frete)
+  let dba;
+  if(pv<30)dba=4.50;
+  else if(pv<50)dba=6.50;
+  else if(pv<79)dba=6.75;
+  else dba=a.frete||0;   // ≥79: valor vindo do estimador de dimensões (ou manual); 0 até preencher
+  // Parcelamento sem juros (1,5% sobre vendas ≥ R$40), se ativado
+  const parcela=(parcelaOn&&pv>=40)?pv*0.015:0;
+  const imposto=pv*(impPct/100);
+  const valorPlataforma=pv-comissao-dba-parcela;
+  const liquido=valorPlataforma-imposto;
+  const lucro=liquido-custo;
+  const margem=pv>0?lucro/pv*100:0;
+  return{pv,comissao,comPct,frete:dba,ajml:0,outros:parcela,desconto:0,descPct:0,descMax:0,valorPlataforma,antecip:0,antPct:0,imposto,impPct,liquido,custo,lucro,margem,_dba:dba,_parcela:parcela,_amMovel:isMovel};
+}
+
 function calcListing(a,chType){
   if(chType==='shopee')return calcSH(a);
   if(chType==='shein')return calcShein(a);
+  if(chType==='amazon')return calcAmazon(a);
   return calcML(a);
 }
 
@@ -2363,11 +2498,12 @@ function openListing(id){
   const ch=CHANNELS.find(c=>c.id===_activeCh);
   if(!ch)return;
 
-  const chType=ch.type;                 // 'ml' | 'shopee' | 'shein'
-  const advKey=chType==='ml'?'ml':chType==='shopee'?'sh':'shein';   // sufixo dos ids dos blocos
+  const chType=ch.type;                 // 'ml' | 'shopee' | 'shein' | 'amazon'
+  const advKey=chType==='ml'?'ml':chType==='shopee'?'sh':chType==='shein'?'shein':'amazon';   // sufixo dos ids dos blocos
   document.getElementById('lf-ml-fields').style.display=chType==='ml'?'':'none';
   document.getElementById('lf-sh-fields').style.display=chType==='shopee'?'':'none';
   document.getElementById('lf-shein-fields').style.display=chType==='shein'?'':'none';
+  document.getElementById('lf-amazon-fields').style.display=chType==='amazon'?'':'none';
   document.getElementById('modal-listing-title').textContent=id?'Editar anúncio':'Novo anúncio';
   document.getElementById('btn-del-listing').style.display=id?'':'none';
   document.getElementById('listing-result').style.display='none';
@@ -2386,9 +2522,15 @@ function openListing(id){
     } else if(chType==='shopee'){
       g('lf-sh-ant',l.ant||2.5);g('lf-sh-frete',l.frete||0);g('lf-sh-outros',l.outros||0);
       g('lf-sh-descpct',l.desc_pct??5);g('lf-sh-descmax',l.desc_max??10);g('lf-sh-imp',l.imp||10);g('lf-sh-status',l.status||'ativo');
-    } else { // shein
+    } else if(chType==='shein'){
       g('lf-shein-com',l.com||18);g('lf-shein-frete',l.frete||0);
       g('lf-shein-descpct',l.desc_pct??5);g('lf-shein-descmax',l.desc_max??10);g('lf-shein-imp',l.imp||10);g('lf-shein-status',l.status||'ativo');
+    } else { // amazon
+      const isMovel=l.tipo==='movel';
+      document.getElementById('lf-amazon-movel').checked=isMovel;
+      document.getElementById('lf-amazon-parcela').checked=(l.ant||0)>0;
+      g('lf-amazon-com',l.com||15);g('lf-amazon-frete',l.frete||0);g('lf-amazon-imp',l.imp||10);g('lf-amazon-status',l.status||'ativo');
+      toggleAmMovel();
     }
     renderTagBtns({full:l.tag_full,oferta:l.tag_oferta,pub:l.tag_pub});
     populateProdutoDropdown(l.produto_id||'');
@@ -2401,11 +2543,17 @@ function openListing(id){
     g('lf-nome','');g('lf-cod','');g('lf-preco','');g('lf-precoD','');g('lf-custo','');
     if(chType==='ml'){g('lf-com',11.5);g('lf-ant',4.2);g('lf-ajml',0);g('lf-frete',0);g('lf-descpct',5);g('lf-descmax',10);g('lf-imp',10);g('lf-tipo','classico');g('lf-status','ativo');}
     else if(chType==='shopee'){g('lf-sh-ant',2.5);g('lf-sh-frete',0);g('lf-sh-outros',0);g('lf-sh-descpct',5);g('lf-sh-descmax',10);g('lf-sh-imp',10);g('lf-sh-status','ativo');}
-    else{g('lf-shein-com',18);g('lf-shein-frete',0);g('lf-shein-descpct',5);g('lf-shein-descmax',10);g('lf-shein-imp',10);g('lf-shein-status','ativo');}
+    else if(chType==='shein'){g('lf-shein-com',18);g('lf-shein-frete',0);g('lf-shein-descpct',5);g('lf-shein-descmax',10);g('lf-shein-imp',10);g('lf-shein-status','ativo');}
+    else{ // amazon
+      document.getElementById('lf-amazon-movel').checked=true; // Móveis é o padrão do Higor
+      document.getElementById('lf-amazon-parcela').checked=true; // parcelamento ativo por padrão
+      g('lf-amazon-com',15);g('lf-amazon-frete',0);g('lf-amazon-imp',10);g('lf-amazon-status','ativo');
+      toggleAmMovel();
+    }
     renderTagBtns({full:false,oferta:false,pub:false});
     populateProdutoDropdown('');
     // Novo anúncio: fecha bloco avançado
-    ['ml','sh','shein'].forEach(c=>{
+    ['ml','sh','shein','amazon'].forEach(c=>{
       document.getElementById(`lf-${c}-adv-body`)?.classList.remove('open');
       document.getElementById(`lf-${c}-adv-toggle`)?.classList.remove('open');
     });
@@ -2462,11 +2610,24 @@ function getListingForm(){
     return{...base,status:s('lf-sh-status'),
       ant:n('lf-sh-ant'),frete:n('lf-sh-frete'),outros:n('lf-sh-outros'),
       desc_pct:n('lf-sh-descpct'),desc_max:n('lf-sh-descmax'),imp:n('lf-sh-imp')};
-  } else { // shein
+  } else if(chType==='shein'){
     return{...base,status:s('lf-shein-status'),
       com:n('lf-shein-com'),frete:n('lf-shein-frete'),
       desc_pct:n('lf-shein-descpct'),desc_max:n('lf-shein-descmax'),imp:n('lf-shein-imp')};
+  } else { // amazon — reaproveita campos: tipo='movel' (Móveis), ant=1 (parcelamento on)
+    const isMovel=document.getElementById('lf-amazon-movel')?.checked;
+    const parcelaOn=document.getElementById('lf-amazon-parcela')?.checked;
+    return{...base,status:s('lf-amazon-status'),
+      com:n('lf-amazon-com'),frete:n('lf-amazon-frete'),imp:n('lf-amazon-imp'),
+      ant:parcelaOn?1:0, tipo:isMovel?'movel':'classico'};
   }
+}
+
+// Móveis usa comissão escalonada (15%/10%), então esconde o campo de % fixa
+function toggleAmMovel(){
+  const isMovel=document.getElementById('lf-amazon-movel')?.checked;
+  const wrap=document.getElementById('lf-amazon-com-wrap');
+  if(wrap)wrap.style.display=isMovel?'none':'';
 }
 
 function onProdutoSelect(){
@@ -2631,8 +2792,23 @@ function listingCalcLive(){
 function renderBreakdownDetail(r,chType){
   const div=document.getElementById('listing-breakdown');
   if(!div)return;
-  const isML=chType==='ml', isSH=chType==='shopee', isShein=chType==='shein';
+  const isML=chType==='ml', isSH=chType==='shopee', isShein=chType==='shein', isAmazon=chType==='amazon';
   let rows=`<div class="bd-row"><span class="l">Preço de venda</span><span class="v">${fmt(r.pv)}</span></div>`;
+
+  if(isAmazon){
+    // Amazon DBA: comissão (fixa ou escalonada Móveis) + tarifa DBA + parcelamento + imposto
+    const comLabel=r._amMovel?`Comissão Móveis (15%/10%)`:`Comissão (${r.comPct}%)`;
+    rows+=`<div class="bd-row"><span class="l">${comLabel}</span><span class="v bd-neg">−${fmt(r.comissao)}</span></div>`;
+    if(r._dba)rows+=`<div class="bd-row"><span class="l">Tarifa DBA (coleta)</span><span class="v bd-neg">−${fmt(r._dba)}</span></div>`;
+    if(r._parcela)rows+=`<div class="bd-row"><span class="l">Parcelamento sem juros (1,5%)</span><span class="v bd-neg">−${fmt(r._parcela)}</span></div>`;
+    rows+=`<div class="bd-row bd-total"><span class="l">Valor que a Amazon paga</span><span class="v">${fmt(r.valorPlataforma)}</span></div>`;
+    rows+=`<div class="bd-row"><span class="l">Imposto (${r.impPct}%)</span><span class="v bd-neg">−${fmt(r.imposto)}</span></div>`;
+    rows+=`<div class="bd-row bd-total"><span class="l">Líquido total</span><span class="v">${fmt(r.liquido)}</span></div>`;
+    rows+=`<div class="bd-row"><span class="l">Custo do produto</span><span class="v bd-neg">−${fmt(r.custo)}</span></div>`;
+    rows+=`<div class="bd-row bd-total"><span class="l">Lucro</span><span class="v" style="color:${r.lucro>=0?'var(--gr)':'var(--rd)'}">${fmt(r.lucro)}</span></div>`;
+    div.innerHTML=rows;
+    return;
+  }
 
   if(isShein){
     // Shein: cupom abate antes; comissão sobre (preço − cupom); sem antecipação.
@@ -2704,6 +2880,31 @@ function calcSheinCub(){
 function aplicarSheinCub(){
   const v=document.getElementById('lf-shein-cub-res').dataset.val;
   if(v){document.getElementById('lf-shein-frete').value=v;listingCalcLive();}
+}
+
+function toggleAmazonCub(){
+  const box=document.getElementById('lf-amazon-cub');
+  if(box)box.style.display=box.style.display==='none'?'block':'none';
+}
+function calcAmazonCub(){
+  const peso=n('lf-amazon-cub-peso'),c=n('lf-amazon-cub-c'),l=n('lf-amazon-cub-l'),a=n('lf-amazon-cub-a');
+  const res=document.getElementById('lf-amazon-cub-res');
+  if(!res)return;
+  // precisa do preço pra saber a coluna da tabela
+  const pv=n('lf-precoD')>0?n('lf-precoD'):n('lf-preco');
+  if(pv<79){res.style.display='none';return;} // abaixo de 79 é tarifa fixa, não usa estimador
+  if((peso<=0)&&(c<=0||l<=0||a<=0)){res.style.display='none';return;}
+  const cubado=(c>0&&l>0&&a>0)?(c*l*a)/6000:0;
+  const pesoFim=Math.max(peso||0,cubado)+0.02;
+  const est=calcDbaTarifa(pv,peso,c,l,a);
+  document.getElementById('lf-amazon-cub-peso-fim').textContent=pesoFim.toFixed(2).replace('.',',')+' kg';
+  document.getElementById('lf-amazon-cub-val').textContent=est.toFixed(2).replace('.',',');
+  res.style.display='flex';
+  res.dataset.val=est.toFixed(2);
+}
+function aplicarAmazonCub(){
+  const v=document.getElementById('lf-amazon-cub-res').dataset.val;
+  if(v){document.getElementById('lf-amazon-frete').value=v;listingCalcLive();}
 }
 function toggleBreakdown(){
   const det=document.getElementById('listing-breakdown');
