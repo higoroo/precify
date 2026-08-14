@@ -172,11 +172,17 @@ html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--t
 .card-title{font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
 
 /* ── METRICS ── */
-.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
 .met{background:var(--sur);border:1px solid var(--bd);border-radius:var(--rs2);padding:14px;transition:transform .2s var(--ease),box-shadow .2s var(--ease),border-color .2s var(--ease)}
 .met-ico{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;margin-bottom:11px}
 .met-ico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .met-alert{border-color:rgba(239,68,68,.35);background:linear-gradient(150deg,rgba(239,68,68,.06),var(--sur))}
+.met-warn{border-color:rgba(245,158,11,.3);background:linear-gradient(150deg,rgba(245,158,11,.05),var(--sur))}
+.dash-lojas{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.dash-loja{padding:7px 15px;border-radius:100px;border:1px solid var(--bd2);background:var(--sur);color:var(--t2);font-size:12.5px;font-weight:600;font-family:var(--font);cursor:pointer;transition:all .15s var(--ease)}
+.dash-loja:hover{border-color:var(--pu);color:var(--t)}
+.dash-loja.active{background:var(--pu-grad);border-color:var(--pu2);color:#fff}
+.ct-ico{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px;margin-right:6px}
 .met:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);border-color:var(--bd2)}
 .met-label{font-size:11px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .met-val{font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1.1;font-family:var(--font);font-variant-numeric:tabular-nums}
@@ -601,10 +607,11 @@ select.tbl-inp{cursor:pointer}
             <div class="ph-left"><div class="ph-title">Painel</div><div class="ph-sub" id="dash-sub">Carregando...</div></div>
           </div>
           <div id="onb-container"></div>
+          <div class="dash-lojas" id="dash-lojas"></div>
           <div class="metrics" id="dash-metrics"></div>
           <div class="two-col">
-            <div class="card"><div class="card-title">Melhores margens</div><div id="dash-top"></div></div>
-            <div class="card"><div class="card-title">Piores margens</div><div id="dash-bot"></div></div>
+            <div class="card"><div class="card-title"><svg class="ct-ico" viewBox="0 0 24 24" style="color:#f59e0b"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>Melhores margens</div><div id="dash-top"></div></div>
+            <div class="card"><div class="card-title"><svg class="ct-ico" viewBox="0 0 24 24" style="color:#ef4444"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Precisam de atenção</div><div id="dash-bot"></div></div>
           </div>
           <div class="card" id="dash-channels-card"><div class="card-title">Por canal</div><div id="dash-channels"></div></div>
         </div>
@@ -1315,7 +1322,7 @@ async function redeemCoupon(){
   }
 }
 
-let _activeTab='dash', _activeCh=null;
+let _activeTab='dash', _activeCh=null, _dashLoja=null;
 let _editListingId=null, _editChannelId=null;
 let _privacyOn=false;
 
@@ -1755,30 +1762,47 @@ function renderDash(){
   });
   const inactiveTotal=LISTINGS.filter(l=>l.status==='inativo').length;
 
-  const sub=document.getElementById('dash-sub');
-  if(sub)sub.textContent=`${all.length} anúncio${all.length!==1?'s':''} ativos${inactiveTotal?` · ${inactiveTotal} inativo${inactiveTotal!==1?'s':''}`:''} · ${CHANNELS.length} canal${CHANNELS.length!==1?'is':''}`;
+  // Abas de loja (Todas + uma por loja). Filtra as métricas por loja.
+  const lojas=lojasUnicas();
+  const lojaRow=document.getElementById('dash-lojas');
+  if(lojaRow){
+    if(lojas.length>1){
+      lojaRow.style.display='flex';
+      if(_dashLoja&&!lojas.includes(_dashLoja))_dashLoja=null;
+      const btn=(label,val)=>`<button class="dash-loja${(_dashLoja===val||(val===null&&!_dashLoja))?' active':''}" onclick="_dashLoja=${val===null?'null':`'${val.replace(/'/g,"\\'")}'`};renderDash()">${sanitize(label)}</button>`;
+      lojaRow.innerHTML=btn('Todas',null)+lojas.map(l=>btn(l,l)).join('');
+    }else{ lojaRow.style.display='none'; _dashLoja=null; }
+  }
 
-  // Metrics — Total, Margem média, Saudáveis (>15%), No prejuízo (≤0%)
-  const avgMarg=all.length?all.reduce((s,a)=>s+a.margem,0)/all.length:0;
-  const ok=all.filter(a=>a.margem>15);
-  const prej=all.filter(a=>a.margem<=0);
+  // Aplica o filtro de loja ao conjunto exibido
+  const scope=_dashLoja?all.filter(a=>lojaDe(a._chName)===_dashLoja):all;
+
+  // Metrics — Total, Margem média, Saudáveis (>15%), Atenção (0-15%), Prejuízo (≤0%)
+  const avgMarg=scope.length?scope.reduce((s,a)=>s+a.margem,0)/scope.length:0;
+  const ok=scope.filter(a=>a.margem>15);
+  const aten=scope.filter(a=>a.margem>0&&a.margem<=15);
+  const prej=scope.filter(a=>a.margem<=0);
   const met=document.getElementById('dash-metrics');
   if(met)met.innerHTML=`
-    <div class="met"><div class="met-ico" style="background:rgba(159,160,170,.12);color:#c5c5cc"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="met-label">Total</div><div class="met-val" data-final="${all.length}" data-fmt="int">0</div><div class="met-sub">anúncios ativos</div></div>
-    <div class="met"><div class="met-ico" style="background:rgba(130,87,245,.14);color:#a78bfa"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avgMarg}" data-fmt="pct1" style="color:${avgMarg>15?'var(--gr)':avgMarg>0?'var(--am)':'var(--rd)'}">0%</div><div class="met-sub">geral</div></div>
+    <div class="met"><div class="met-ico" style="background:rgba(159,160,170,.12);color:#c5c5cc"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></div><div class="met-label">Total</div><div class="met-val" data-final="${scope.length}" data-fmt="int">0</div><div class="met-sub">anúncios ativos</div></div>
+    <div class="met"><div class="met-ico" style="background:rgba(130,87,245,.14);color:#a78bfa"><svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></svg></div><div class="met-label">Margem média</div><div class="met-val prv" data-final="${avgMarg}" data-fmt="pct1" style="color:${avgMarg>15?'var(--gr)':avgMarg>0?'var(--am)':'var(--rd)'}">0%</div><div class="met-sub">${_dashLoja||'geral'}</div></div>
     <div class="met"><div class="met-ico" style="background:rgba(34,197,94,.12);color:#22c55e"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="met-label">Saudáveis</div><div class="met-val" data-final="${ok.length}" data-fmt="int" style="color:var(--gr)">0</div><div class="met-sub">margem &gt;15%</div></div>
-    <div class="met ${prej.length?'met-alert':''}"><div class="met-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="met-label">No prejuízo</div><div class="met-val" data-final="${prej.length}" data-fmt="int" style="color:${prej.length?'var(--rd)':'var(--gr)'}">0</div><div class="met-sub">margem &le;0%</div></div>`;
+    <div class="met ${aten.length?'met-warn':''}"><div class="met-ico" style="background:rgba(245,158,11,.14);color:#f59e0b"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="met-label">Atenção</div><div class="met-val" data-final="${aten.length}" data-fmt="int" style="color:${aten.length?'var(--am)':'var(--t)'}">0</div><div class="met-sub">0–15%</div></div>
+    <div class="met ${prej.length?'met-alert':''}"><div class="met-ico" style="background:rgba(239,68,68,.14);color:#ef4444"><svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="met-label">Prejuízo</div><div class="met-val" data-final="${prej.length}" data-fmt="int" style="color:${prej.length?'var(--rd)':'var(--gr)'}">0</div><div class="met-sub">margem &le;0%</div></div>`;
   animateMetrics(met);
 
+  const sub=document.getElementById('dash-sub');
+  if(sub)sub.textContent=`${scope.length} anúncio${scope.length!==1?'s':''} ativos${inactiveTotal&&!_dashLoja?` · ${inactiveTotal} inativo${inactiveTotal!==1?'s':''}`:''} · ${CHANNELS.length} canal${CHANNELS.length!==1?'is':''}`;
+
   // Top/bot
-  const sorted=[...all].sort((a,b)=>b.margem-a.margem);
+  const sorted=[...scope].sort((a,b)=>b.margem-a.margem);
   const mkRI=(a)=>`<div class="ri privacy-item" onclick="goChannel('${a.channel_id}')">
     <div style="min-width:0;flex:1">
       <div class="ri-name prv">${sanitize(a.nome)}</div>
       <div class="ri-cod" onclick="event.stopPropagation();copyCod('${a.cod}')" title="Copiar">${a.cod}</div>
       <div style="font-size:11px;color:var(--t3)">${sanitize(a._chName)}</div>
     </div>
-    <div class="ri-right"><span class="badge ${a.margem>=16?'b-ok':'b-nok'} prv">${a.margem.toFixed(1)}%</span><div class="ri-sub prv">${fmt(a.lucro)}</div></div>
+    <div class="ri-right"><span class="badge ${a.margem>15?'b-ok':'b-nok'} prv">${a.margem.toFixed(1)}%</span><div class="ri-sub prv">${fmt(a.lucro)}</div></div>
   </div>`;
 
   const top=document.getElementById('dash-top');
@@ -1790,7 +1814,8 @@ function renderDash(){
   if(top)top.innerHTML=sorted.slice(0,5).map(mkRI).join('')||emptyMsg;
   if(bot)bot.innerHTML=sorted.slice(-5).reverse().map(mkRI).join('')||emptyMsg;
   const chDiv=document.getElementById('dash-channels');
-  if(chDiv)chDiv.innerHTML=CHANNELS.map(ch=>{
+  const chScope=_dashLoja?CHANNELS.filter(ch=>lojaDe(ch.name)===_dashLoja):CHANNELS;
+  if(chDiv)chDiv.innerHTML=chScope.map(ch=>{
     const chL=all.filter(a=>a.channel_id===ch.id);
     const chAvg=chL.length?chL.reduce((s,a)=>s+a.margem,0)/chL.length:0;
     const color=chColor(ch.type);
@@ -1800,7 +1825,7 @@ function renderDash(){
         <div style="font-size:11px;color:var(--t3)">${chL.length} anúncios</div>
       </div>
       <div class="ri-right">
-        <span class="badge ${chAvg>=16?'b-ok':'b-nok'} prv">${chAvg.toFixed(1)}%</span>
+        <span class="badge ${chAvg>15?'b-ok':'b-nok'} prv">${chAvg.toFixed(1)}%</span>
         <div class="ri-sub prv">${fmt(chL.reduce((s,a)=>s+a.lucro,0))} lucro total</div>
       </div>
     </div>`;
