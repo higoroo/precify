@@ -2061,7 +2061,7 @@ function renderDash(){
       </div>
       <div class="ri-right">
         <span class="badge ${chAvg>15?'b-ok':'b-nok'} prv">${chAvg.toFixed(1)}%</span>
-        <div class="ri-sub prv">${fmt(chL.reduce((s,a)=>s+a.lucro,0))} lucro total</div>
+        <div class="ri-sub prv">${fmt(chL.length?chL.reduce((s,a)=>s+(a.pv||0),0)/chL.length:0)} preço médio</div>
       </div>
     </div>`;
   }).join('');
@@ -2470,7 +2470,9 @@ function renderInsights(){
   all.forEach(a=>{const k=a.nome.split(' ').slice(0,3).join(' ').toUpperCase();if(!byName[k])byName[k]=[];byName[k].push(a);});
   Object.entries(byName).forEach(([k,items])=>{
     const bons=items.filter(a=>a.margem>=25);
-    if(bons.length&&items.length<=2)sugs.push({icon:ICO_BULB,cls:'am',title:`"${k}" tem margem ≥25% — explore mais`,desc:`Apenas ${items.length} anúncio(s). Criar mais variações pode aumentar o faturamento.`});
+    // Mostra o nome completo de um produto do grupo (o de maior margem), não a chave truncada
+    const rep=bons.length?bons.reduce((m,a)=>a.margem>m.margem?a:m,bons[0]):items[0];
+    if(bons.length&&items.length<=2)sugs.push({icon:ICO_BULB,cls:'am',title:`"${sanitize(rep.nome)}" tem margem ≥25% — explore mais`,desc:`Apenas ${items.length} anúncio(s) parecido(s). Criar mais variações pode aumentar o faturamento.`});
   });
 
   const sugDiv=document.getElementById('ins-sugestoes');
